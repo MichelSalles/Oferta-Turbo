@@ -1,3 +1,15 @@
+function decodeHtml(text = "") {
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ");
+}
+
 function extractItemId(text = "") {
   const patterns = [
     /\bMLB[-_]?(\d{6,})\b/i,
@@ -25,49 +37,111 @@ function extractItemId(text = "") {
   return null;
 }
 
-function getCookie(req, name) {
-  const cookies = req.headers.cookie || "";
+function extractMeta(html, property) {
+  const patterns = [
+    new RegExp(
+      `<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`,
+      "i"
+    ),
+    new RegExp(
+      `<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${property}["']`,
+      "i"
+    ),
+    new RegExp(
+      `<meta[^>]+name=["']${property}["'][^>]+content=["']([^"']+)["']`,
+      "i"
+    ),
+  ];
 
-  const cookie = cookies
-    .split(";")
-    .map((item) => item.trim())
-    .find((item) => item.startsWith(`${name}=`));
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
 
-  if (!cookie) return null;
+    if (match?.[1]) {
+      return decodeHtml(match[1]);
+    }
+  }
 
-  return decodeURIComponent(
-    cookie.substring(name.length + 1)
-  );
+  return null;
 }
 
-async function resolveMercadoLivreUrl(startUrl) {
-  let currentUrl = startUrl;
+function extractJsonLd(html) {
+  const scripts = [
+    ...html.matchAll(
+      /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+    ),
+  ];
 
-  const headers = {
-    "User-Agent":
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+  for (const match of scripts) {
+    try {
+      const parsed = JSON.parse(
+        decodeHtml(match[1].trim())
+      );
 
-    Accept:
-      "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  };
+      const items = Array.isArray(parsed)
+        ? parsed
+        : [parsed];
 
-  for (let i = 0; i < 8; i++) {
-    console.log(`Redirect ${i}:`, currentUrl);
+      for (const item of items) {
+        if (
+          item &&
+          (
+            item["@type"] === "Product" ||
+            item.name ||
+            item.offers
+          )
+        ) {
+          return item;
+        }
 
-    const directId = extractItemId(currentUrl);
+        if (item?.["@graph"]) {
+          const product = item["@graph"].find(
+            (entry) =>
+              entry?.["@type"] === "Product"
+          );
 
-    if (directId) {
-      return {
-        finalUrl: currentUrl,
-        itemId: directId,
-      };
+          if (product) {
+            return product;
+          }
+        }
+      }
+    } catch {
+      // Ignora JSON-LD inválido.
     }
+  }
 
-    const response = await fetch(currentUrl, {
-      method: "GET",
-      redirect: "manual",
-      headers,
-    });
+  return null;
+}
+
+async function fetchPage(url) {
+  return fetch(url, {
+    method: "GET",
+    redirect: "manual",
+
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+
+      "Accept-Language":
+        "pt-BR,pt;q=0.9,en;q=0.8",
+    },
+  });
+}
+
+async function resolveProduct(startUrl) {
+  let currentUrl = startUrl;
+  let lastHtml = "";
+
+  for (let i = 0; i < 10; i++) {
+    console.log(
+      `Resolvendo link ${i}:`,
+      currentUrl
+    );
+
+    const response =
+      await fetchPage(currentUrl);
 
     const location =
       response.headers.get("location");
@@ -85,49 +159,37 @@ async function resolveMercadoLivreUrl(startUrl) {
       response.headers.get("content-type") || "";
 
     if (contentType.includes("text/html")) {
-      const html = await response.text();
-
-      const idFromHtml =
-        extractItemId(html);
-
-      if (idFromHtml) {
-        return {
-          finalUrl: currentUrl,
-          itemId: idFromHtml,
-        };
-      }
+      lastHtml = await response.text();
 
       const canonical =
-        html.match(
+        extractMeta(lastHtml, "og:url") ||
+        lastHtml.match(
           /<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i
-        ) ||
-        html.match(
-          /<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)/i
-        );
+        )?.[1];
 
-      if (canonical?.[1]) {
+      /*
+       * Só segue canonical se realmente
+       * levar para outra página.
+       */
+      if (
+        canonical &&
+        canonical !== currentUrl
+      ) {
         const nextUrl = new URL(
-          canonical[1],
+          canonical,
           currentUrl
         ).toString();
 
-        if (nextUrl !== currentUrl) {
+        /*
+         * Evita ficar preso em loop.
+         */
+        if (
+          nextUrl !== currentUrl &&
+          !currentUrl.includes(nextUrl)
+        ) {
           currentUrl = nextUrl;
           continue;
         }
-      }
-
-      const httpEquiv = html.match(
-        /url=([^"'<> ]+)/i
-      );
-
-      if (httpEquiv?.[1]) {
-        currentUrl = new URL(
-          httpEquiv[1],
-          currentUrl
-        ).toString();
-
-        continue;
       }
     }
 
@@ -136,8 +198,29 @@ async function resolveMercadoLivreUrl(startUrl) {
 
   return {
     finalUrl: currentUrl,
-    itemId: extractItemId(currentUrl),
+    html: lastHtml,
   };
+}
+
+function normalizePrice(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === "number") {
+    return value;
+  }
+
+  const clean = String(value)
+    .replace(/[^\d.,]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  const parsed = Number(clean);
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
 }
 
 module.exports = async function handler(req, res) {
@@ -150,149 +233,164 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { url, id } = req.query;
+    const { url } = req.query;
 
-    if (!url && !id) {
-      return res.status(400).json({
-        error: "Informe o link ou ID do produto.",
-      });
-    }
-
-    let itemId = id
-      ? extractItemId(id)
-      : null;
-
-    let finalUrl = url || "";
-
-    // Tenta encontrar MLB diretamente no link
-    if (!itemId && url) {
-      itemId = extractItemId(url);
-    }
-
-    // Resolve links curtos como meli.la
-    if (!itemId && url) {
-      const resolved =
-        await resolveMercadoLivreUrl(url);
-
-      finalUrl = resolved.finalUrl;
-      itemId = resolved.itemId;
-    }
-
-    if (!itemId) {
+    if (!url) {
       return res.status(400).json({
         error:
-          "Não foi possível identificar o ID do produto.",
-
-        original_url: url || null,
-        final_url: finalUrl || null,
+          "Informe o link do Mercado Livre.",
       });
     }
 
-    console.log(
-      "Produto identificado:",
-      itemId
-    );
+    const resolved =
+      await resolveProduct(url);
 
-    // Recupera o access token salvo pelo callback
-    const accessToken = getCookie(
-      req,
-      "meli_access_token"
-    );
+    const html = resolved.html;
+    const finalUrl = resolved.finalUrl;
 
-    if (!accessToken) {
-      return res.status(401).json({
-        error:
-          "Mercado Livre não conectado.",
-
-        message:
-          "Conecte novamente sua conta do Mercado Livre.",
-      });
-    }
-
-    // Consulta o produto autenticado
-    const response = await fetch(
-      `https://api.mercadolibre.com/items/${itemId}`,
-      {
-        method: "GET",
-
-        headers: {
-          Accept: "application/json",
-          Authorization:
-            `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    let data;
-
-    try {
-      data = await response.json();
-    } catch (error) {
-      console.error(
-        "Resposta inválida da API:",
-        error
-      );
-
+    if (!html) {
       return res.status(502).json({
         error:
-          "O Mercado Livre retornou uma resposta inválida.",
+          "Não foi possível carregar a página do produto.",
+        final_url: finalUrl,
       });
     }
 
-    if (!response.ok) {
-      console.error(
-        "Erro API Mercado Livre:",
-        data
-      );
+    const jsonLd =
+      extractJsonLd(html);
 
-      return res
-        .status(response.status)
-        .json({
-          error:
-            "Erro ao consultar produto no Mercado Livre.",
+    const offers =
+      jsonLd?.offers || {};
 
-          item_id: itemId,
+    /*
+     * Nome
+     */
+    const title =
+      jsonLd?.name ||
+      extractMeta(html, "og:title") ||
+      extractMeta(html, "twitter:title");
 
-          details: data,
-        });
+    /*
+     * Imagem
+     */
+    let image =
+      jsonLd?.image ||
+      extractMeta(html, "og:image") ||
+      extractMeta(html, "twitter:image");
+
+    if (Array.isArray(image)) {
+      image = image[0];
     }
 
-    const originalPrice =
-      data.original_price &&
-      data.original_price > data.price
-        ? data.original_price
-        : null;
+    /*
+     * Preço atual
+     */
+    let price =
+      normalizePrice(
+        offers?.price ??
+        extractMeta(
+          html,
+          "product:price:amount"
+        )
+      );
+
+    /*
+     * Outros padrões encontrados
+     * em páginas de e-commerce.
+     */
+    if (!price) {
+      const priceMatch =
+        html.match(
+          /"price"\s*:\s*"?([\d.]+)"?/i
+        ) ||
+        html.match(
+          /"amount"\s*:\s*([\d.]+)/i
+        );
+
+      if (priceMatch?.[1]) {
+        price =
+          normalizePrice(priceMatch[1]);
+      }
+    }
+
+    /*
+     * Preço anterior.
+     */
+    let originalPrice = null;
+
+    const originalPatterns = [
+      /"original_price"\s*:\s*([\d.]+)/i,
+      /"originalPrice"\s*:\s*([\d.]+)/i,
+      /"previous_price"\s*:\s*([\d.]+)/i,
+      /"previousPrice"\s*:\s*([\d.]+)/i,
+    ];
+
+    for (
+      const pattern of originalPatterns
+    ) {
+      const match = html.match(pattern);
+
+      if (match?.[1]) {
+        originalPrice =
+          normalizePrice(match[1]);
+
+        break;
+      }
+    }
+
+    if (
+      originalPrice &&
+      price &&
+      originalPrice <= price
+    ) {
+      originalPrice = null;
+    }
 
     const discountPercent =
-      originalPrice && data.price
+      originalPrice && price
         ? Math.round(
-            ((originalPrice - data.price) /
+            ((originalPrice - price) /
               originalPrice) *
               100
           )
         : null;
 
-    const pictures = Array.isArray(
-      data.pictures
-    )
-      ? data.pictures
-          .map(
-            (picture) =>
-              picture.secure_url ||
-              picture.url
-          )
-          .filter(Boolean)
-      : [];
+    /*
+     * ID MLB
+     */
+    const itemId =
+      extractItemId(html) ||
+      extractItemId(finalUrl);
+
+    /*
+     * Frete grátis
+     */
+    const freeShipping =
+      /frete gr[aá]tis/i.test(html) ||
+      /"free_shipping"\s*:\s*true/i.test(
+        html
+      );
+
+    if (!title && !price && !image) {
+      return res.status(422).json({
+        error:
+          "A página foi encontrada, mas não foi possível extrair os dados do produto.",
+
+        item_id: itemId,
+        final_url: finalUrl,
+      });
+    }
 
     return res.status(200).json({
       success: true,
 
       product: {
-        id: data.id,
+        id: itemId,
 
-        title: data.title,
+        title:
+          title || null,
 
-        price: data.price,
+        price,
 
         original_price:
           originalPrice,
@@ -300,45 +398,19 @@ module.exports = async function handler(req, res) {
         discount_percent:
           discountPercent,
 
-        currency:
-          data.currency_id,
-
-        permalink:
-          data.permalink,
-
-        original_url:
-          url || null,
-
-        final_url:
-          finalUrl ||
-          data.permalink,
+        image:
+          image || null,
 
         thumbnail:
-          data.thumbnail,
-
-        pictures,
-
-        condition:
-          data.condition,
-
-        available_quantity:
-          data.available_quantity,
-
-        sold_quantity:
-          data.sold_quantity,
+          image || null,
 
         free_shipping:
-          data.shipping?.free_shipping ===
-          true,
+          freeShipping,
 
-        category_id:
-          data.category_id,
+        affiliate_url: url,
 
-        seller_id:
-          data.seller_id,
-
-        listing_type_id:
-          data.listing_type_id,
+        final_url:
+          finalUrl,
       },
     });
   } catch (error) {
@@ -349,7 +421,7 @@ module.exports = async function handler(req, res) {
 
     return res.status(500).json({
       error:
-        "Erro interno ao consultar produto.",
+        "Erro interno ao buscar produto.",
 
       message:
         error?.message ||
