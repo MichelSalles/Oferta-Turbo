@@ -1,5 +1,5 @@
 function decodeHtml(text = "") {
-  return text
+  return String(text)
     .replace(/&quot;/g, '"')
     .replace(/&#34;/g, '"')
     .replace(/&#39;/g, "'")
@@ -8,6 +8,15 @@ function decodeHtml(text = "") {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&nbsp;/g, " ");
+}
+
+function stripHtml(text = "") {
+  return decodeHtml(text)
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function extractItemId(text = "") {
@@ -21,7 +30,7 @@ function extractItemId(text = "") {
   ];
 
   for (const pattern of patterns) {
-    const match = text.match(pattern);
+    const match = String(text).match(pattern);
 
     if (match) {
       const value = match[1];
@@ -71,45 +80,48 @@ function extractJsonLd(html) {
     ),
   ];
 
+  const products = [];
+
+  function collect(value) {
+    if (!value) return;
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        collect(item);
+      }
+      return;
+    }
+
+    if (typeof value !== "object") {
+      return;
+    }
+
+    if (
+      value["@type"] === "Product" ||
+      value.offers ||
+      value.name
+    ) {
+      products.push(value);
+    }
+
+    if (Array.isArray(value["@graph"])) {
+      collect(value["@graph"]);
+    }
+  }
+
   for (const match of scripts) {
     try {
       const parsed = JSON.parse(
         decodeHtml(match[1].trim())
       );
 
-      const items = Array.isArray(parsed)
-        ? parsed
-        : [parsed];
-
-      for (const item of items) {
-        if (
-          item &&
-          (
-            item["@type"] === "Product" ||
-            item.name ||
-            item.offers
-          )
-        ) {
-          return item;
-        }
-
-        if (item?.["@graph"]) {
-          const product = item["@graph"].find(
-            (entry) =>
-              entry?.["@type"] === "Product"
-          );
-
-          if (product) {
-            return product;
-          }
-        }
-      }
+      collect(parsed);
     } catch {
-      // Ignora JSON-LD inválido
+      // Ignora JSON-LD inválido.
     }
   }
 
-  return null;
+  return products[0] || null;
 }
 
 async function fetchPage(url) {
@@ -135,13 +147,7 @@ async function resolveProduct(startUrl) {
   let lastHtml = "";
 
   for (let i = 0; i < 10; i++) {
-    console.log(
-      `Resolvendo link ${i}:`,
-      currentUrl
-    );
-
-    const response =
-      await fetchPage(currentUrl);
+    const response = await fetchPage(currentUrl);
 
     const location =
       response.headers.get("location");
@@ -158,9 +164,11 @@ async function resolveProduct(startUrl) {
     const contentType =
       response.headers.get("content-type") || "";
 
-    if (contentType.includes("text/html")) {
-      lastHtml =
-        await response.text();
+    if (
+      contentType.includes("text/html") ||
+      contentType.includes("application/xhtml")
+    ) {
+      lastHtml = await response.text();
     }
 
     break;
@@ -175,13 +183,16 @@ async function resolveProduct(startUrl) {
 function normalizePrice(value) {
   if (
     value === undefined ||
-    value === null
+    value === null ||
+    value === ""
   ) {
     return null;
   }
 
   if (typeof value === "number") {
-    return value;
+    return Number.isFinite(value)
+      ? value
+      : null;
   }
 
   let text = String(value)
@@ -200,40 +211,72 @@ function normalizePrice(value) {
     text = text
       .replace(/\./g, "")
       .replace(",", ".");
-  } else if (
-    text.includes(",")
-  ) {
-    text =
-      text.replace(",", ".");
+  } else if (text.includes(",")) {
+    text = text.replace(",", ".");
   }
 
   text =
     text.replace(/[^\d.]/g, "");
 
-  const parsed =
-    Number(text);
+  const parsed = Number(text);
 
   return Number.isFinite(parsed)
     ? parsed
     : null;
 }
 
-function roundMoney(value) {
-  return Math.round(
-    value * 100
-  ) / 100;
+function uniqueNumbers(values) {
+  const result = [];
+
+  for (const value of values) {
+    const number =
+      normalizePrice(value);
+
+    if (
+      number !== null &&
+      number > 0 &&
+      number < 1000000 &&
+      !result.includes(number)
+    ) {
+      result.push(number);
+    }
+  }
+
+  return result;
 }
 
-function extractVisiblePriceOccurrences(html) {
-  const results = [];
+function getContext(html, index, radius = 450) {
+  const start = Math.max(
+    0,
+    index - radius
+  );
 
-  const regex =
+  const end = Math.min(
+    html.length,
+    index + radius
+  );
+
+  return stripHtml(
+    html.slice(start, end)
+  ).slice(0, 900);
+}
+
+function extractPriceEvidence(html) {
+  const evidence = [];
+
+  /*
+   * Preços visíveis:
+   * R$ 113
+   * R$ 55,90
+   */
+  const visibleRegex =
     /R\$\s*([0-9.]+(?:,[0-9]{1,2})?)/gi;
 
   let match;
 
   while (
-    (match = regex.exec(html)) !== null
+    (match =
+      visibleRegex.exec(html)) !== null
   ) {
     const value =
       normalizePrice(match[1]);
@@ -243,21 +286,27 @@ function extractVisiblePriceOccurrences(html) {
       value > 0 &&
       value < 1000000
     ) {
-      results.push({
+      evidence.push({
         value,
         index: match.index,
-        source: "visible",
+        source: "visible_r$",
+        context:
+          getContext(
+            html,
+            match.index
+          ),
       });
+    }
+
+    if (evidence.length >= 40) {
+      break;
     }
   }
 
-  return results;
-}
-
-function extractSplitPriceOccurrences(html) {
-  const results = [];
-
-  const patterns = [
+  /*
+   * Preços montados em fraction + cents.
+   */
+  const splitPatterns = [
     /(?:andes-money-amount__fraction|price-tag-fraction)[^>]*>\s*([0-9.]+)\s*<[\s\S]{0,350}?(?:andes-money-amount__cents|price-tag-cents)[^>]*>\s*([0-9]{1,2})\s*</gi,
 
     /"fraction"\s*:\s*"?([0-9.]+)"?[\s\S]{0,200}?"cents"\s*:\s*"?([0-9]{1,2})"?/gi,
@@ -265,18 +314,19 @@ function extractSplitPriceOccurrences(html) {
     /"integer"\s*:\s*"?([0-9.]+)"?[\s\S]{0,200}?"decimal"\s*:\s*"?([0-9]{1,2})"?/gi,
   ];
 
-  for (const pattern of patterns) {
-    let match;
+  for (const pattern of splitPatterns) {
+    let splitMatch;
 
     while (
-      (match = pattern.exec(html)) !== null
+      (splitMatch =
+        pattern.exec(html)) !== null
     ) {
       const integerPart =
-        String(match[1])
+        String(splitMatch[1])
           .replace(/\./g, "");
 
       const centsPart =
-        String(match[2])
+        String(splitMatch[2])
           .padStart(2, "0");
 
       const value =
@@ -289,343 +339,698 @@ function extractSplitPriceOccurrences(html) {
         value > 0 &&
         value < 1000000
       ) {
-        results.push({
+        evidence.push({
           value,
-          index: match.index,
-          source: "split",
+          index:
+            splitMatch.index,
+          source:
+            "fraction_cents",
+          context:
+            getContext(
+              html,
+              splitMatch.index
+            ),
         });
       }
+
+      if (evidence.length >= 70) {
+        break;
+      }
+    }
+  }
+
+  return evidence
+    .sort(
+      (a, b) =>
+        a.index - b.index
+    )
+    .slice(0, 50);
+}
+
+function extractDiscountEvidence(html) {
+  const results = [];
+
+  const regex =
+    /(\d{1,2})\s*%\s*OFF/gi;
+
+  let match;
+
+  while (
+    (match = regex.exec(html)) !== null
+  ) {
+    const value =
+      Number(match[1]);
+
+    if (
+      Number.isFinite(value) &&
+      value > 0 &&
+      value < 100
+    ) {
+      results.push({
+        value,
+        index:
+          match.index,
+        context:
+          getContext(
+            html,
+            match.index
+          ),
+      });
+    }
+
+    if (results.length >= 30) {
+      break;
     }
   }
 
   return results;
 }
 
-function cleanOccurrences(items) {
-  const sorted = [...items].sort(
-    (a, b) =>
-      a.index - b.index
-  );
-
-  const result = [];
-
-  for (const item of sorted) {
-    const duplicate =
-      result.some(
-        (existing) =>
-          existing.value === item.value &&
-          Math.abs(
-            existing.index -
-            item.index
-          ) < 350
-      );
-
-    if (!duplicate) {
-      result.push(item);
-    }
-  }
-
-  return result;
-}
-
-function calculatePreviousPrice(
-  currentPrice,
-  discountPercent
+function calculateDiscount(
+  oldPrice,
+  currentPrice
 ) {
   if (
+    !oldPrice ||
     !currentPrice ||
-    !discountPercent ||
-    discountPercent <= 0 ||
-    discountPercent >= 100
+    oldPrice <= currentPrice
   ) {
     return null;
   }
 
-  const estimated =
-    currentPrice /
+  return Math.round(
     (
-      1 -
-      discountPercent / 100
-    );
-
-  const nearestInteger =
-    Math.round(estimated);
-
-  if (
-    Math.abs(
-      estimated -
-      nearestInteger
-    ) <= 0.20
-  ) {
-    return nearestInteger;
-  }
-
-  return roundMoney(
-    estimated
+      (oldPrice - currentPrice) /
+      oldPrice
+    ) * 100
   );
 }
 
-function extractPriceData(
-  html,
-  jsonLd,
-  discountMatch
+function fallbackSelection(
+  priceEvidence,
+  discountEvidence,
+  jsonLdPrice
 ) {
-  const discountPercent =
-    discountMatch?.[1]
-      ? Number(discountMatch[1])
-      : null;
+  const prices =
+    uniqueNumbers([
+      ...priceEvidence.map(
+        (item) => item.value
+      ),
+      jsonLdPrice,
+    ]).slice(0, 20);
 
-  /*
-   * Todos os preços encontrados,
-   * mantendo a ordem da página.
-   */
-  const occurrences =
-    cleanOccurrences([
-      ...extractVisiblePriceOccurrences(html),
-      ...extractSplitPriceOccurrences(html),
-    ]);
+  const discounts = [
+    ...new Set(
+      discountEvidence
+        .map(
+          (item) => item.value
+        )
+        .filter(Boolean)
+    ),
+  ].slice(0, 15);
 
-  const candidates = [];
+  let bestPair = null;
+  let bestScore = Infinity;
 
-  for (const item of occurrences) {
-    if (
-      !candidates.includes(item.value)
-    ) {
-      candidates.push(item.value);
-    }
-  }
-
-  /*
-   * PRIORIDADE 1:
-   *
-   * Se existe desconto, procura um par
-   * preço antigo > preço atual
-   * cujo percentual bata com o desconto.
-   *
-   * Ex:
-   * 78,90 -> 55,90 = 29%
-   */
-  if (
-    discountPercent &&
-    candidates.length >= 2
+  for (
+    let i = 0;
+    i < prices.length;
+    i++
   ) {
-    const searchCandidates =
-      candidates.slice(0, 12);
-
-    let bestPair = null;
-    let bestScore = Infinity;
+    const current =
+      prices[i];
 
     for (
-      let currentIndex = 0;
-      currentIndex <
-      searchCandidates.length;
-      currentIndex++
+      let j = 0;
+      j < prices.length;
+      j++
     ) {
-      const current =
-        searchCandidates[currentIndex];
+      const old =
+        prices[j];
+
+      if (old <= current) {
+        continue;
+      }
+
+      const calculated =
+        calculateDiscount(
+          old,
+          current
+        );
 
       for (
-        let oldIndex = 0;
-        oldIndex <
-        searchCandidates.length;
-        oldIndex++
+        let d = 0;
+        d < discounts.length;
+        d++
       ) {
-        const old =
-          searchCandidates[oldIndex];
-
-        if (
-          old <= current
-        ) {
-          continue;
-        }
-
-        const calculatedDiscount =
-          Math.round(
-            ((old - current) / old) *
-              100
-          );
-
-        const discountDifference =
+        const difference =
           Math.abs(
-            calculatedDiscount -
-              discountPercent
+            calculated -
+            discounts[d]
           );
-
-        /*
-         * Quanto mais cedo o par aparece
-         * na página, melhor.
-         */
-        const positionPenalty =
-          (
-            currentIndex +
-            oldIndex
-          ) * 0.05;
 
         const score =
-          discountDifference +
-          positionPenalty;
+          difference +
+          (i + j + d) * 0.05;
 
         if (
-          discountDifference <= 1 &&
+          difference <= 1 &&
           score < bestScore
         ) {
-          bestScore =
-            score;
+          bestScore = score;
 
           bestPair = {
             price: current,
-            originalPrice: old,
+            original_price: old,
+            discount_percent:
+              discounts[d],
+            confidence: 0,
           };
         }
       }
     }
-
-    if (bestPair) {
-      return {
-        price:
-          bestPair.price,
-
-        originalPrice:
-          bestPair.originalPrice,
-
-        discountPercent,
-
-        nearbyCandidates:
-          searchCandidates,
-
-        strategy:
-          "discount_pair",
-      };
-    }
   }
 
-  /*
-   * PRIORIDADE 2:
-   * usa o primeiro preço encontrado.
-   */
-  let price =
-    candidates.length
-      ? candidates[0]
-      : null;
-
-  /*
-   * Dados estruturados só entram
-   * se nenhum preço foi encontrado.
-   */
-  if (!price) {
-    const offers =
-      jsonLd?.offers || {};
-
-    price =
-      normalizePrice(
-        offers?.price
-      ) ||
-      normalizePrice(
-        extractMeta(
-          html,
-          "product:price:amount"
-        )
-      );
+  if (bestPair) {
+    return bestPair;
   }
 
-  /*
-   * Procura preço anterior explícito.
-   */
-  let originalPrice =
-    null;
+  return {
+    price:
+      jsonLdPrice ||
+      prices[0] ||
+      null,
 
-  const originalPatterns = [
-    /"original_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"originalPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"previous_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"previousPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"list_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"listPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-  ];
+    original_price:
+      null,
+
+    discount_percent:
+      discounts[0] ||
+      null,
+
+    confidence: 0,
+  };
+}
+
+function extractOutputText(data) {
+  if (
+    typeof data?.output_text ===
+    "string" &&
+    data.output_text.trim()
+  ) {
+    return data.output_text;
+  }
+
+  if (
+    !Array.isArray(
+      data?.output
+    )
+  ) {
+    return null;
+  }
 
   for (
-    const pattern of originalPatterns
+    const item of data.output
   ) {
-    const match =
-      html.match(pattern);
+    if (
+      !Array.isArray(
+        item?.content
+      )
+    ) {
+      continue;
+    }
 
-    if (match?.[1]) {
-      const candidate =
-        normalizePrice(
-          match[1]
-        );
-
+    for (
+      const content of
+        item.content
+    ) {
       if (
-        candidate &&
-        price &&
-        candidate > price
+        content?.type ===
+          "output_text" &&
+        typeof content.text ===
+          "string"
       ) {
-        const calculatedDiscount =
-          Math.round(
-            ((candidate - price) /
-              candidate) *
-              100
-          );
-
-        /*
-         * Só aceita o preço anterior
-         * se for compatível com
-         * o desconto exibido.
-         */
-        if (
-          !discountPercent ||
-          Math.abs(
-            calculatedDiscount -
-              discountPercent
-          ) <= 1
-        ) {
-          originalPrice =
-            candidate;
-
-          break;
-        }
+        return content.text;
       }
     }
   }
 
+  return null;
+}
+
+function isAllowedPrice(
+  value,
+  priceCandidates
+) {
+  if (value === null) {
+    return true;
+  }
+
+  return priceCandidates.some(
+    (candidate) =>
+      Math.abs(
+        candidate - value
+      ) < 0.011
+  );
+}
+
+function validateAIResult(
+  result,
+  priceCandidates,
+  discountCandidates
+) {
+  if (
+    !result ||
+    typeof result !== "object"
+  ) {
+    throw new Error(
+      "Resposta da IA inválida."
+    );
+  }
+
+  const price =
+    normalizePrice(
+      result.price
+    );
+
+  const originalPrice =
+    normalizePrice(
+      result.original_price
+    );
+
+  const discount =
+    result.discount_percent ===
+      null
+      ? null
+      : Number(
+          result.discount_percent
+        );
+
+  let confidence =
+    Number(
+      result.confidence
+    );
+
+  if (
+    !Number.isFinite(
+      confidence
+    )
+  ) {
+    confidence = 0;
+  }
+
+  confidence =
+    Math.max(
+      0,
+      Math.min(
+        1,
+        confidence
+      )
+    );
+
   /*
-   * Último fallback:
-   * calcula preço antigo pelo desconto.
+   * A IA não pode inventar preço.
    */
   if (
-    !originalPrice &&
-    price &&
-    discountPercent
+    price !== null &&
+    !isAllowedPrice(
+      price,
+      priceCandidates
+    )
   ) {
-    originalPrice =
-      calculatePreviousPrice(
-        price,
-        discountPercent
-      );
+    throw new Error(
+      "IA escolheu um preço que não estava nos candidatos."
+    );
   }
 
   if (
-    originalPrice &&
-    price &&
+    originalPrice !== null &&
+    !isAllowedPrice(
+      originalPrice,
+      priceCandidates
+    )
+  ) {
+    throw new Error(
+      "IA escolheu um preço anterior que não estava nos candidatos."
+    );
+  }
+
+  if (
+    originalPrice !== null &&
+    price !== null &&
     originalPrice <= price
   ) {
-    originalPrice =
-      null;
+    throw new Error(
+      "Preço anterior inválido."
+    );
+  }
+
+  if (
+    discount !== null &&
+    (
+      !Number.isFinite(
+        discount
+      ) ||
+      discount <= 0 ||
+      discount >= 100
+    )
+  ) {
+    throw new Error(
+      "Desconto inválido."
+    );
+  }
+
+  /*
+   * Se a IA informou desconto,
+   * verificamos se ele apareceu
+   * na página ou se bate com o par.
+   */
+  if (
+    discount !== null
+  ) {
+    const appeared =
+      discountCandidates.some(
+        (candidate) =>
+          Math.abs(
+            candidate -
+            discount
+          ) <= 1
+      );
+
+    const calculated =
+      originalPrice &&
+      price
+        ? calculateDiscount(
+            originalPrice,
+            price
+          )
+        : null;
+
+    const matchesPrices =
+      calculated !== null &&
+      Math.abs(
+        calculated -
+        discount
+      ) <= 1;
+
+    if (
+      !appeared &&
+      !matchesPrices
+    ) {
+      throw new Error(
+        "Desconto escolhido pela IA não foi confirmado."
+      );
+    }
   }
 
   return {
     price,
-
-    originalPrice,
-
-    discountPercent,
-
-    nearbyCandidates:
-      candidates.slice(0, 12),
-
-    strategy:
-      "first_price_fallback",
+    original_price:
+      originalPrice,
+    discount_percent:
+      discount,
+    confidence,
   };
+}
+
+async function analyzeWithAI({
+  title,
+  itemId,
+  finalUrl,
+  jsonLdPrice,
+  priceEvidence,
+  discountEvidence,
+  freeShipping,
+}) {
+  if (
+    !process.env
+      .OPENAI_API_KEY
+  ) {
+    throw new Error(
+      "OPENAI_API_KEY não configurada."
+    );
+  }
+
+  const priceCandidates =
+    uniqueNumbers([
+      ...priceEvidence.map(
+        (item) =>
+          item.value
+      ),
+      jsonLdPrice,
+    ]);
+
+  const discountCandidates = [
+    ...new Set(
+      discountEvidence.map(
+        (item) =>
+          item.value
+      )
+    ),
+  ];
+
+  /*
+   * Reduzimos os dados enviados
+   * para manter custo e latência baixos.
+   */
+  const compactPriceEvidence =
+    priceEvidence
+      .slice(0, 35)
+      .map(
+        (
+          item,
+          index
+        ) => ({
+          candidate_id:
+            `P${index + 1}`,
+          value:
+            item.value,
+          source:
+            item.source,
+          position:
+            item.index,
+          context:
+            item.context,
+        })
+      );
+
+  const compactDiscountEvidence =
+    discountEvidence
+      .slice(0, 20)
+      .map(
+        (
+          item,
+          index
+        ) => ({
+          candidate_id:
+            `D${index + 1}`,
+          value:
+            item.value,
+          position:
+            item.index,
+          context:
+            item.context,
+        })
+      );
+
+  const userData = {
+    marketplace:
+      "Mercado Livre Brasil",
+
+    product: {
+      id:
+        itemId || null,
+      title:
+        title || null,
+      final_url:
+        finalUrl || null,
+      json_ld_price:
+        jsonLdPrice,
+      free_shipping_detected:
+        freeShipping,
+    },
+
+    price_candidates:
+      compactPriceEvidence,
+
+    discount_candidates:
+      compactDiscountEvidence,
+  };
+
+  const response =
+    await fetch(
+      "https://api.openai.com/v1/responses",
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${process.env.OPENAI_API_KEY}`,
+
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+            model:
+              "gpt-5-mini",
+
+            store:
+              false,
+
+            max_output_tokens:
+              300,
+
+            input: [
+              {
+                role:
+                  "system",
+
+                content:
+                  `Você é um extrator de dados de ofertas do Mercado Livre Brasil.
+
+Sua única tarefa é identificar os valores do PRODUTO PRINCIPAL mostrado na página:
+- price: preço atual principal à vista exibido para a variação selecionada;
+- original_price: preço anterior riscado do mesmo produto/variação;
+- discount_percent: percentual OFF correspondente ao mesmo par;
+- confidence: confiança entre 0 e 1.
+
+Regras obrigatórias:
+1. Ignore valores de parcelas.
+2. Ignore valores de cartão Mercado Pago.
+3. Ignore linha de crédito.
+4. Ignore descontos condicionais a cartão, cupom, Pix ou quantidade, a menos que sejam claramente o preço principal do anúncio.
+5. Ignore preços de produtos recomendados, carrosséis, anúncios relacionados e outras ofertas.
+6. Ignore outras variações não selecionadas.
+7. Use título, posição e contexto de cada candidato para identificar o bloco principal.
+8. O preço atual e o preço anterior devem existir nos candidatos recebidos. Nunca invente preço.
+9. O desconto deve existir nos candidatos ou ser matematicamente compatível com os dois preços.
+10. Se não houver evidência suficiente para um campo, devolva null.
+11. Prefira dados que estejam no mesmo contexto do título/produto principal e próximos uns dos outros.
+12. Preço anterior deve ser maior que preço atual.`,
+              },
+
+              {
+                role:
+                  "user",
+
+                content:
+                  JSON.stringify(
+                    userData
+                  ),
+              },
+            ],
+
+            text: {
+              format: {
+                type:
+                  "json_schema",
+
+                name:
+                  "mercado_livre_offer",
+
+                strict:
+                  true,
+
+                schema: {
+                  type:
+                    "object",
+
+                  additionalProperties:
+                    false,
+
+                  properties: {
+                    price: {
+                      type: [
+                        "number",
+                        "null",
+                      ],
+                    },
+
+                    original_price: {
+                      type: [
+                        "number",
+                        "null",
+                      ],
+                    },
+
+                    discount_percent: {
+                      type: [
+                        "number",
+                        "null",
+                      ],
+                    },
+
+                    confidence: {
+                      type:
+                        "number",
+                      minimum:
+                        0,
+                      maximum:
+                        1,
+                    },
+                  },
+
+                  required: [
+                    "price",
+                    "original_price",
+                    "discount_percent",
+                    "confidence",
+                  ],
+                },
+              },
+            },
+          }),
+      }
+    );
+
+  const data =
+    await response.json();
+
+  if (!response.ok) {
+    console.error(
+      "Erro OpenAI:",
+      JSON.stringify(
+        data
+      )
+    );
+
+    throw new Error(
+      data?.error?.message ||
+      `OpenAI HTTP ${response.status}`
+    );
+  }
+
+  const outputText =
+    extractOutputText(
+      data
+    );
+
+  if (!outputText) {
+    throw new Error(
+      "A OpenAI não retornou texto estruturado."
+    );
+  }
+
+  let result;
+
+  try {
+    result =
+      JSON.parse(
+        outputText
+      );
+  } catch {
+    throw new Error(
+      "Não foi possível interpretar o JSON da IA."
+    );
+  }
+
+  return validateAIResult(
+    result,
+    priceCandidates,
+    discountCandidates
+  );
 }
 
 module.exports =
@@ -662,6 +1067,43 @@ async function handler(
         });
     }
 
+    let parsedInput;
+
+    try {
+      parsedInput =
+        new URL(url);
+    } catch {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Link inválido.",
+        });
+    }
+
+    const allowedHosts = [
+      "meli.la",
+      "www.meli.la",
+      "mercadolivre.com.br",
+      "www.mercadolivre.com.br",
+      "mercadolivre.com",
+      "www.mercadolivre.com",
+    ];
+
+    if (
+      !allowedHosts.includes(
+        parsedInput.hostname
+          .toLowerCase()
+      )
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Use um link do Mercado Livre.",
+        });
+    }
+
     const resolved =
       await resolveProduct(
         url
@@ -690,9 +1132,6 @@ async function handler(
         html
       );
 
-    /*
-     * Título
-     */
     const title =
       jsonLd?.name ||
       extractMeta(
@@ -704,9 +1143,6 @@ async function handler(
         "twitter:title"
       );
 
-    /*
-     * Imagem
-     */
     let image =
       jsonLd?.image ||
       extractMeta(
@@ -719,36 +1155,25 @@ async function handler(
       );
 
     if (
-      Array.isArray(image)
+      Array.isArray(
+        image
+      )
     ) {
       image =
         image[0];
     }
 
-    /*
-     * Desconto
-     */
-    const discountRegex =
-      /(\d{1,2})\s*%\s*OFF/i;
+    if (
+      image &&
+      typeof image ===
+        "object"
+    ) {
+      image =
+        image.url ||
+        image.contentUrl ||
+        null;
+    }
 
-    const discountMatch =
-      discountRegex.exec(
-        html
-      );
-
-    /*
-     * Preços
-     */
-    const prices =
-      extractPriceData(
-        html,
-        jsonLd,
-        discountMatch
-      );
-
-    /*
-     * ID MLB
-     */
     const itemId =
       extractItemId(
         html
@@ -757,16 +1182,166 @@ async function handler(
         finalUrl
       );
 
-    /*
-     * Frete grátis
-     */
     const freeShipping =
       /frete gr[aá]tis/i.test(
-        html
+        stripHtml(html)
       ) ||
       /"free_shipping"\s*:\s*true/i.test(
         html
       );
+
+    let jsonLdPrice =
+      null;
+
+    if (
+      jsonLd?.offers
+    ) {
+      if (
+        Array.isArray(
+          jsonLd.offers
+        )
+      ) {
+        for (
+          const offer of
+            jsonLd.offers
+        ) {
+          const candidate =
+            normalizePrice(
+              offer?.price
+            );
+
+          if (
+            candidate !==
+            null
+          ) {
+            jsonLdPrice =
+              candidate;
+            break;
+          }
+        }
+      } else {
+        jsonLdPrice =
+          normalizePrice(
+            jsonLd.offers
+              ?.price
+          );
+      }
+    }
+
+    const priceEvidence =
+      extractPriceEvidence(
+        html
+      );
+
+    const discountEvidence =
+      extractDiscountEvidence(
+        html
+      );
+
+    const priceCandidates =
+      uniqueNumbers([
+        ...priceEvidence.map(
+          (item) =>
+            item.value
+        ),
+        jsonLdPrice,
+      ]);
+
+    const discountCandidates = [
+      ...new Set(
+        discountEvidence.map(
+          (item) =>
+            item.value
+        )
+      ),
+    ];
+
+    let priceResult;
+    let priceSource =
+      "ai";
+    let aiError =
+      null;
+
+    try {
+      priceResult =
+        await analyzeWithAI({
+          title,
+          itemId,
+          finalUrl,
+          jsonLdPrice,
+          priceEvidence,
+          discountEvidence,
+          freeShipping,
+        });
+
+      /*
+       * Se a IA ficou muito insegura,
+       * preferimos marcar isso no debug.
+       * Ainda usamos a resposta,
+       * pois ela foi validada contra
+       * candidatos reais.
+       */
+      if (
+        priceResult
+          .confidence <
+        0.45
+      ) {
+        priceSource =
+          "ai_low_confidence";
+      }
+    } catch (error) {
+      console.error(
+        "Falha na análise com IA:",
+        error
+      );
+
+      aiError =
+        error?.message ||
+        "Erro desconhecido";
+
+      priceSource =
+        "fallback";
+
+      priceResult =
+        fallbackSelection(
+          priceEvidence,
+          discountEvidence,
+          jsonLdPrice
+        );
+    }
+
+    /*
+     * Validação matemática final.
+     */
+    if (
+      priceResult
+        .original_price !==
+        null &&
+      priceResult.price !==
+        null
+    ) {
+      const calculatedDiscount =
+        calculateDiscount(
+          priceResult
+            .original_price,
+          priceResult.price
+        );
+
+      /*
+       * Se não veio desconto da IA
+       * mas o par é válido,
+       * calculamos.
+       */
+      if (
+        priceResult
+          .discount_percent ===
+          null
+      ) {
+        priceResult
+          .discount_percent =
+          calculatedDiscount;
+      }
+    }
 
     return res
       .status(200)
@@ -781,13 +1356,19 @@ async function handler(
             title || null,
 
           price:
-            prices.price,
+            priceResult
+              .price ??
+            null,
 
           original_price:
-            prices.originalPrice,
+            priceResult
+              .original_price ??
+            null,
 
           discount_percent:
-            prices.discountPercent,
+            priceResult
+              .discount_percent ??
+            null,
 
           image:
             image || null,
@@ -806,15 +1387,32 @@ async function handler(
         },
 
         /*
-         * Temporário para confirmar
-         * qual estratégia foi usada.
+         * TEMPORÁRIO:
+         * deixe esse debug enquanto
+         * fazemos os primeiros testes.
          */
         debug: {
-          price_strategy:
-            prices.strategy,
+          price_source:
+            priceSource,
 
-          nearby_prices:
-            prices.nearbyCandidates,
+          ai_confidence:
+            priceResult
+              .confidence ??
+            null,
+
+          ai_error:
+            aiError,
+
+          json_ld_price:
+            jsonLdPrice,
+
+          price_candidates:
+            priceCandidates
+              .slice(0, 30),
+
+          discount_candidates:
+            discountCandidates
+              .slice(0, 20),
         },
       });
 
