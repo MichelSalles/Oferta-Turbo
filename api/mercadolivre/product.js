@@ -25,6 +25,21 @@ function extractItemId(text = "") {
   return null;
 }
 
+function getCookie(req, name) {
+  const cookies = req.headers.cookie || "";
+
+  const cookie = cookies
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${name}=`));
+
+  if (!cookie) return null;
+
+  return decodeURIComponent(
+    cookie.substring(name.length + 1)
+  );
+}
+
 async function resolveMercadoLivreUrl(startUrl) {
   let currentUrl = startUrl;
 
@@ -39,7 +54,6 @@ async function resolveMercadoLivreUrl(startUrl) {
   for (let i = 0; i < 8; i++) {
     console.log(`Redirect ${i}:`, currentUrl);
 
-    // Primeiro tenta encontrar o MLB diretamente na URL
     const directId = extractItemId(currentUrl);
 
     if (directId) {
@@ -55,8 +69,8 @@ async function resolveMercadoLivreUrl(startUrl) {
       headers,
     });
 
-    // Verifica redirecionamento HTTP
-    const location = response.headers.get("location");
+    const location =
+      response.headers.get("location");
 
     if (location) {
       currentUrl = new URL(
@@ -70,11 +84,11 @@ async function resolveMercadoLivreUrl(startUrl) {
     const contentType =
       response.headers.get("content-type") || "";
 
-    // Se recebemos HTML, procuramos o MLB dentro da página
     if (contentType.includes("text/html")) {
       const html = await response.text();
 
-      const idFromHtml = extractItemId(html);
+      const idFromHtml =
+        extractItemId(html);
 
       if (idFromHtml) {
         return {
@@ -83,7 +97,6 @@ async function resolveMercadoLivreUrl(startUrl) {
         };
       }
 
-      // Procura URL canonical ou og:url
       const canonical =
         html.match(
           /<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i
@@ -104,7 +117,6 @@ async function resolveMercadoLivreUrl(startUrl) {
         }
       }
 
-      // Alguns redirecionamentos usam meta refresh
       const httpEquiv = html.match(
         /url=([^"'<> ]+)/i
       );
@@ -157,7 +169,7 @@ module.exports = async function handler(req, res) {
       itemId = extractItemId(url);
     }
 
-    // Se for meli.la/social/etc., resolve o link
+    // Resolve links curtos como meli.la
     if (!itemId && url) {
       const resolved =
         await resolveMercadoLivreUrl(url);
@@ -181,15 +193,23 @@ module.exports = async function handler(req, res) {
       itemId
     );
 
-    /*
-     * IMPORTANTE:
-     *
-     * Não enviamos o access_token aqui.
-     *
-     * Estamos testando a consulta pública
-     * do produto diretamente na API.
-     */
+    // Recupera o access token salvo pelo callback
+    const accessToken = getCookie(
+      req,
+      "meli_access_token"
+    );
 
+    if (!accessToken) {
+      return res.status(401).json({
+        error:
+          "Mercado Livre não conectado.",
+
+        message:
+          "Conecte novamente sua conta do Mercado Livre.",
+      });
+    }
+
+    // Consulta o produto autenticado
     const response = await fetch(
       `https://api.mercadolibre.com/items/${itemId}`,
       {
@@ -197,11 +217,27 @@ module.exports = async function handler(req, res) {
 
         headers: {
           Accept: "application/json",
+          Authorization:
+            `Bearer ${accessToken}`,
         },
       }
     );
 
-    const data = await response.json();
+    let data;
+
+    try {
+      data = await response.json();
+    } catch (error) {
+      console.error(
+        "Resposta inválida da API:",
+        error
+      );
+
+      return res.status(502).json({
+        error:
+          "O Mercado Livre retornou uma resposta inválida.",
+      });
+    }
 
     if (!response.ok) {
       console.error(
