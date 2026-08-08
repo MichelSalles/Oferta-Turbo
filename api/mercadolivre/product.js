@@ -172,7 +172,10 @@ async function resolveProduct(startUrl) {
 }
 
 function normalizePrice(value) {
-  if (value === undefined || value === null) {
+  if (
+    value === undefined ||
+    value === null
+  ) {
     return null;
   }
 
@@ -185,14 +188,10 @@ function normalizePrice(value) {
     .replace(/\s/g, "")
     .replace(/[R$]/gi, "");
 
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
 
-  /*
-   * Exemplos:
-   * 35,91
-   * 1.299,90
-   * 35.91
-   */
   if (
     text.includes(".") &&
     text.includes(",")
@@ -218,7 +217,8 @@ function firstPriceMatch(html, patterns) {
     const match = html.match(pattern);
 
     if (match?.[1]) {
-      const value = normalizePrice(match[1]);
+      const value =
+        normalizePrice(match[1]);
 
       if (value !== null) {
         return value;
@@ -229,15 +229,98 @@ function firstPriceMatch(html, patterns) {
   return null;
 }
 
-function extractPriceData(html, jsonLd) {
-  let price = null;
-  let originalPrice = null;
-  let discountPercent = null;
-
-  const offers = jsonLd?.offers || {};
+function extractSplitMercadoLivrePrices(html) {
+  const results = [];
 
   /*
-   * 1) JSON-LD / metas padrão
+   * Tenta encontrar blocos onde o Mercado Livre
+   * separa parte inteira e centavos.
+   *
+   * Exemplo visual:
+   * 35 + 91 => 35.91
+   */
+  const splitPatterns = [
+    /(?:andes-money-amount__fraction|price-tag-fraction)[^>]*>\s*([0-9.]+)\s*<[\s\S]{0,300}?(?:andes-money-amount__cents|price-tag-cents)[^>]*>\s*([0-9]{1,2})\s*</gi,
+
+    /"fraction"\s*:\s*"?([0-9.]+)"?[\s\S]{0,200}?"cents"\s*:\s*"?([0-9]{1,2})"?/gi,
+
+    /"integer"\s*:\s*"?([0-9.]+)"?[\s\S]{0,200}?"decimal"\s*:\s*"?([0-9]{1,2})"?/gi,
+  ];
+
+  for (const pattern of splitPatterns) {
+    let match;
+
+    while (
+      (match = pattern.exec(html)) !== null
+    ) {
+      const integerPart =
+        String(match[1]).replace(/\./g, "");
+
+      const centsPart =
+        String(match[2]).padEnd(2, "0");
+
+      const value = Number(
+        `${integerPart}.${centsPart}`
+      );
+
+      if (
+        Number.isFinite(value) &&
+        value > 0
+      ) {
+        results.push(value);
+      }
+    }
+  }
+
+  return [
+    ...new Set(results),
+  ];
+}
+
+function extractVisiblePrices(html) {
+  const values = [];
+
+  /*
+   * R$ 35,91
+   * R$ 61
+   */
+  const regex =
+    /R\$\s*([0-9.]+(?:,[0-9]{1,2})?)/gi;
+
+  let match;
+
+  while (
+    (match = regex.exec(html)) !== null
+  ) {
+    const value =
+      normalizePrice(match[1]);
+
+    if (
+      value !== null &&
+      value > 0
+    ) {
+      values.push(value);
+    }
+  }
+
+  return [
+    ...new Set(values),
+  ];
+}
+
+function extractPriceData(
+  html,
+  jsonLd,
+  discountPercentFromPage
+) {
+  let price = null;
+  let originalPrice = null;
+
+  const offers =
+    jsonLd?.offers || {};
+
+  /*
+   * 1. JSON-LD / metas
    */
   price =
     normalizePrice(offers?.price) ||
@@ -249,12 +332,11 @@ function extractPriceData(html, jsonLd) {
     );
 
   /*
-   * 2) Padrões internos comuns do Mercado Livre
+   * 2. Campos internos
    */
   if (!price) {
     price = firstPriceMatch(html, [
       /"price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
       /"current_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
       /"currentPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
       /"sale_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
@@ -262,99 +344,174 @@ function extractPriceData(html, jsonLd) {
     ]);
   }
 
-  /*
-   * 3) Procura preço no HTML visível
-   *
-   * Ex:
-   * R$ 35,91
-   */
-  if (!price) {
-    price = firstPriceMatch(html, [
-      /R\$\s*([0-9.]+,[0-9]{2})/i,
-      /R\$\s*([0-9.]+)/i,
+  originalPrice =
+    firstPriceMatch(html, [
+      /"original_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"originalPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"previous_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"previousPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"list_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"listPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
     ]);
-  }
 
   /*
-   * Preço anterior
+   * 3. Preços separados em reais + centavos
    */
-  originalPrice = firstPriceMatch(html, [
-    /"original_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"originalPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"previous_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"previousPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"list_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    /"listPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-  ]);
+  const splitPrices =
+    extractSplitMercadoLivrePrices(html);
 
   /*
-   * Padrão visual de preço riscado.
-   * Exemplo:
-   * R$ 61
+   * 4. Preços visíveis no HTML
    */
-  if (!originalPrice) {
-    const allPrices = [
-      ...html.matchAll(
-        /R\$\s*([0-9.]+(?:,[0-9]{2})?)/gi
-      ),
-    ]
-      .map((match) =>
-        normalizePrice(match[1])
-      )
-      .filter(
-        (value) =>
-          value !== null &&
-          value > 0
-      );
+  const visiblePrices =
+    extractVisiblePrices(html);
 
-    if (price && allPrices.length) {
-      const possiblePrevious =
-        allPrices.filter(
-          (value) => value > price
-        );
+  const candidates = [
+    ...splitPrices,
+    ...visiblePrices,
+  ]
+    .filter(
+      (value) =>
+        Number.isFinite(value) &&
+        value > 0 &&
+        value < 1000000
+    );
 
-      if (possiblePrevious.length) {
-        originalPrice = Math.min(
-          ...possiblePrevious
-        );
+  const uniqueCandidates = [
+    ...new Set(candidates),
+  ];
+
+  /*
+   * Se ainda não temos preço,
+   * tenta inferir pelo desconto conhecido.
+   *
+   * Ex.: 35.91 e 61 com 41%.
+   */
+  if (
+    !price &&
+    uniqueCandidates.length
+  ) {
+    if (
+      discountPercentFromPage
+    ) {
+      let bestPair = null;
+      let bestDifference =
+        Infinity;
+
+      for (
+        const current of uniqueCandidates
+      ) {
+        for (
+          const previous of uniqueCandidates
+        ) {
+          if (previous <= current) {
+            continue;
+          }
+
+          const calculated =
+            Math.round(
+              ((previous - current) /
+                previous) *
+                100
+            );
+
+          const difference =
+            Math.abs(
+              calculated -
+                discountPercentFromPage
+            );
+
+          if (
+            difference <
+            bestDifference
+          ) {
+            bestDifference =
+              difference;
+
+            bestPair = {
+              current,
+              previous,
+            };
+          }
+        }
       }
+
+      if (
+        bestPair &&
+        bestDifference <= 2
+      ) {
+        price =
+          bestPair.current;
+
+        originalPrice =
+          bestPair.previous;
+      }
+    }
+
+    /*
+     * Se não encontrou par pelo desconto,
+     * pega o menor valor como preço atual.
+     */
+    if (!price) {
+      price = Math.min(
+        ...uniqueCandidates
+      );
     }
   }
 
   /*
-   * Desconto explícito no HTML.
-   * Ex: 41% OFF
-   */
-  const discountMatch =
-    html.match(
-      /(\d{1,2})\s*%\s*OFF/i
-    );
-
-  if (discountMatch?.[1]) {
-    discountPercent =
-      Number(discountMatch[1]);
-  }
-
-  /*
-   * Se não achou explicitamente,
-   * calcula pelo preço anterior.
+   * Descobre preço anterior
+   * caso ainda esteja faltando.
    */
   if (
-    !discountPercent &&
-    originalPrice &&
     price &&
-    originalPrice > price
+    !originalPrice &&
+    uniqueCandidates.length
   ) {
-    discountPercent =
-      Math.round(
-        ((originalPrice - price) /
-          originalPrice) *
-          100
-      );
+    const higherPrices =
+      uniqueCandidates
+        .filter(
+          (value) =>
+            value > price
+        )
+        .sort(
+          (a, b) => a - b
+        );
+
+    if (higherPrices.length) {
+      originalPrice =
+        higherPrices[0];
+    }
   }
 
   /*
-   * Sanitização
+   * Se temos desconto e preço atual,
+   * podemos estimar o preço anterior
+   * como último fallback.
+   */
+  if (
+    price &&
+    !originalPrice &&
+    discountPercentFromPage &&
+    discountPercentFromPage > 0 &&
+    discountPercentFromPage < 100
+  ) {
+    const estimated =
+      price /
+      (
+        1 -
+        discountPercentFromPage /
+          100
+      );
+
+    originalPrice =
+      Math.round(
+        estimated * 100
+      ) / 100;
+  }
+
+  /*
+   * Validação
    */
   if (
     originalPrice &&
@@ -364,19 +521,45 @@ function extractPriceData(html, jsonLd) {
     originalPrice = null;
   }
 
+  let discountPercent =
+    discountPercentFromPage ||
+    null;
+
+  if (
+    !discountPercent &&
+    price &&
+    originalPrice
+  ) {
+    discountPercent =
+      Math.round(
+        ((originalPrice - price) /
+          originalPrice) *
+          100
+      );
+  }
+
   return {
     price,
     originalPrice,
     discountPercent,
+    debugCandidates:
+      uniqueCandidates,
   };
 }
 
-module.exports = async function handler(req, res) {
+module.exports = async function handler(
+  req,
+  res
+) {
   if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
+    res.setHeader(
+      "Allow",
+      ["GET"]
+    );
 
     return res.status(405).json({
-      error: "Method not allowed",
+      error:
+        "Method not allowed",
     });
   }
 
@@ -393,14 +576,19 @@ module.exports = async function handler(req, res) {
     const resolved =
       await resolveProduct(url);
 
-    const html = resolved.html;
-    const finalUrl = resolved.finalUrl;
+    const html =
+      resolved.html;
+
+    const finalUrl =
+      resolved.finalUrl;
 
     if (!html) {
       return res.status(502).json({
         error:
           "Não foi possível carregar a página do produto.",
-        final_url: finalUrl,
+
+        final_url:
+          finalUrl,
       });
     }
 
@@ -408,39 +596,70 @@ module.exports = async function handler(req, res) {
       extractJsonLd(html);
 
     /*
-     * Nome
+     * Título
      */
     const title =
       jsonLd?.name ||
-      extractMeta(html, "og:title") ||
-      extractMeta(html, "twitter:title");
+      extractMeta(
+        html,
+        "og:title"
+      ) ||
+      extractMeta(
+        html,
+        "twitter:title"
+      );
 
     /*
      * Imagem
      */
     let image =
       jsonLd?.image ||
-      extractMeta(html, "og:image") ||
-      extractMeta(html, "twitter:image");
+      extractMeta(
+        html,
+        "og:image"
+      ) ||
+      extractMeta(
+        html,
+        "twitter:image"
+      );
 
-    if (Array.isArray(image)) {
+    if (
+      Array.isArray(image)
+    ) {
       image = image[0];
     }
 
     /*
-     * Preços e desconto
+     * Desconto explícito
+     */
+    const discountMatch =
+      html.match(
+        /(\d{1,2})\s*%\s*OFF/i
+      );
+
+    const explicitDiscount =
+      discountMatch?.[1]
+        ? Number(
+            discountMatch[1]
+          )
+        : null;
+
+    /*
+     * Preços
      */
     const {
       price,
       originalPrice,
       discountPercent,
+      debugCandidates,
     } = extractPriceData(
       html,
-      jsonLd
+      jsonLd,
+      explicitDiscount
     );
 
     /*
-     * ID MLB
+     * ID
      */
     const itemId =
       extractItemId(html) ||
@@ -450,7 +669,9 @@ module.exports = async function handler(req, res) {
      * Frete grátis
      */
     const freeShipping =
-      /frete gr[aá]tis/i.test(html) ||
+      /frete gr[aá]tis/i.test(
+        html
+      ) ||
       /"free_shipping"\s*:\s*true/i.test(
         html
       );
@@ -464,8 +685,11 @@ module.exports = async function handler(req, res) {
         error:
           "A página foi encontrada, mas não foi possível extrair os dados do produto.",
 
-        item_id: itemId,
-        final_url: finalUrl,
+        item_id:
+          itemId,
+
+        final_url:
+          finalUrl,
       });
     }
 
@@ -473,7 +697,8 @@ module.exports = async function handler(req, res) {
       success: true,
 
       product: {
-        id: itemId,
+        id:
+          itemId,
 
         title:
           title || null,
@@ -500,6 +725,15 @@ module.exports = async function handler(req, res) {
 
         final_url:
           finalUrl,
+      },
+
+      /*
+       * Temporário para diagnóstico.
+       * Depois retiramos.
+       */
+      debug: {
+        price_candidates:
+          debugCandidates,
       },
     });
   } catch (error) {
