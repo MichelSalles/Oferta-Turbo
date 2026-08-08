@@ -1,9 +1,20 @@
 function extractItemId(text = "") {
-  const match = text.match(/\bMLB[-_]?(\d{6,})\b/i);
+  const patterns = [
+    /\bMLB[-_]?(\d{6,})\b/i,
+    /\/p\/MLB(\d{6,})/i,
+    /\/MLB-(\d{6,})/i,
+    /item_id=MLB(\d{6,})/i,
+  ];
 
-  if (!match) return null;
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
 
-  return `MLB${match[1]}`;
+    if (match) {
+      return `MLB${match[1]}`;
+    }
+  }
+
+  return null;
 }
 
 function getCookie(req, name) {
@@ -19,15 +30,28 @@ function getCookie(req, name) {
   return decodeURIComponent(cookie.substring(name.length + 1));
 }
 
-async function resolveUrl(url) {
+async function resolveShortUrl(url) {
   try {
     const response = await fetch(url, {
       method: "GET",
-      redirect: "follow",
+      redirect: "manual",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
     });
 
+    const location = response.headers.get("location");
+
+    if (location) {
+      return new URL(location, url).toString();
+    }
+
     return response.url || url;
-  } catch {
+  } catch (error) {
+    console.error("Erro ao resolver link curto:", error);
     return url;
   }
 }
@@ -54,7 +78,11 @@ export default async function handler(req, res) {
     let finalUrl = url || "";
 
     if (!itemId && url) {
-      finalUrl = await resolveUrl(url);
+      itemId = extractItemId(url);
+    }
+
+    if (!itemId && url?.includes("meli.la")) {
+      finalUrl = await resolveShortUrl(url);
       itemId = extractItemId(finalUrl);
     }
 
@@ -132,9 +160,7 @@ export default async function handler(req, res) {
         free_shipping:
           data.shipping?.free_shipping === true,
 
-        listing_type_id: data.listing_type_id,
         category_id: data.category_id,
-
         seller_id: data.seller_id,
       },
     });
@@ -142,7 +168,4 @@ export default async function handler(req, res) {
     console.error("Erro product.js:", error);
 
     return res.status(500).json({
-      error: "Erro interno ao consultar produto.",
-    });
-  }
-}
+      error
