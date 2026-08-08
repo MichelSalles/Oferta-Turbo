@@ -1,177 +1,769 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b0b0b" />
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
   <title>Oferta Turbo</title>
-  <link rel="manifest" href="manifest.json">
+
   <style>
-    :root{--bg:#0b0b0b;--card:#171717;--muted:#a3a3a3;--text:#fff;--accent:#ff7a00;--ok:#25D366;--line:#2a2a2a}
-    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .wrap{max-width:720px;margin:auto;padding:18px 16px 42px}
-    .brand{display:flex;align-items:center;gap:12px;margin:8px 0 18px}.logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#ff9d2f,#ff4d00);display:grid;place-items:center;font-size:24px;font-weight:900}
-    h1{font-size:24px;margin:0}.sub{color:var(--muted);font-size:14px;margin-top:3px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:14px 0}
-    label{display:block;font-size:13px;color:#d4d4d4;margin:12px 0 6px}
-    input,select,textarea{width:100%;border:1px solid #333;background:#0f0f0f;color:#fff;border-radius:12px;padding:13px 12px;font-size:16px;outline:none}
-    textarea{min-height:130px;resize:vertical}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-    button,a.btn{border:0;border-radius:13px;padding:14px 12px;font-weight:800;font-size:15px;text-align:center;text-decoration:none;cursor:pointer}
-    .primary{background:var(--accent);color:#111}.green{background:var(--ok);color:#07140b}.ghost{background:#262626;color:#fff}.danger{background:#3b1111;color:#ffb0b0}
-    .preview-title{font-size:13px;color:var(--muted);margin-bottom:8px}.preview{white-space:pre-wrap;line-height:1.45;background:#0f0f0f;border:1px dashed #3a3a3a;border-radius:14px;padding:14px;min-height:120px}
-    .tiny{font-size:12px;color:var(--muted);line-height:1.45}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#242424;font-size:12px;color:#ddd;margin-right:5px}
-    .saved{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;border-top:1px solid #2a2a2a;padding:12px 0}.saved:first-child{border-top:0}
-    .saved b{display:block}.saved small{color:var(--muted)} .footer{text-align:center;color:#777;font-size:12px;margin-top:28px}
-    @media(max-width:520px){.grid,.btns{grid-template-columns:1fr}}
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+      background: #0d0d0d;
+      color: #fff;
+
+      min-height: 100vh;
+
+      padding: 24px 16px 60px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .logo {
+      width: 58px;
+      height: 58px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border-radius: 18px;
+
+      font-size: 30px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #ff9d2e,
+          #ff5e22
+        );
+    }
+
+    .header h1 {
+      font-size: 30px;
+      line-height: 1;
+      margin-bottom: 7px;
+    }
+
+    .header p {
+      color: #a8a8a8;
+      font-size: 15px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+
+      padding: 6px;
+
+      border-radius: 16px;
+
+      background: #171717;
+
+      margin-bottom: 16px;
+    }
+
+    .tab {
+      border: 0;
+      border-radius: 12px;
+
+      padding: 13px;
+
+      color: #aaa;
+      background: transparent;
+
+      font-size: 15px;
+      font-weight: 600;
+
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #ff7a00;
+      color: #111;
+    }
+
+    .card {
+      background: #171717;
+
+      border: 1px solid #2b2b2b;
+      border-radius: 22px;
+
+      padding: 20px;
+    }
+
+    .field {
+      margin-bottom: 17px;
+    }
+
+    label {
+      display: block;
+
+      margin-bottom: 8px;
+
+      color: #d8d8d8;
+      font-size: 14px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+
+      border: 1px solid #353535;
+      outline: none;
+
+      border-radius: 14px;
+
+      padding: 15px;
+
+      background: #0d0d0d;
+      color: #fff;
+
+      font-size: 16px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #ff7a00;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .lookup-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    .lookup-button {
+      border: 0;
+      border-radius: 14px;
+
+      padding: 0 18px;
+
+      background: #3483fa;
+      color: #fff;
+
+      font-weight: 700;
+      font-size: 15px;
+
+      cursor: pointer;
+    }
+
+    .lookup-button:disabled {
+      opacity: 0.55;
+    }
+
+    .status {
+      display: none;
+
+      margin-top: 10px;
+
+      font-size: 14px;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.success {
+      color: #3ddc84;
+    }
+
+    .status.error {
+      color: #ff6464;
+    }
+
+    .product-preview {
+      display: none;
+
+      gap: 14px;
+      align-items: center;
+
+      margin: 16px 0 22px;
+
+      padding: 12px;
+
+      background: #101010;
+
+      border: 1px solid #2d2d2d;
+      border-radius: 16px;
+    }
+
+    .product-preview.show {
+      display: flex;
+    }
+
+    .product-preview img {
+      width: 90px;
+      height: 90px;
+
+      border-radius: 12px;
+      object-fit: contain;
+
+      background: #fff;
+    }
+
+    .product-preview-info {
+      min-width: 0;
+    }
+
+    .product-preview-title {
+      font-size: 14px;
+      font-weight: 700;
+
+      line-height: 1.35;
+
+      margin-bottom: 8px;
+    }
+
+    .product-preview-price {
+      font-size: 20px;
+      color: #3ddc84;
+      font-weight: 800;
+    }
+
+    .discount {
+      margin-left: 6px;
+
+      color: #3ddc84;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+
+      gap: 10px;
+
+      margin-top: 8px;
+    }
+
+    .button {
+      border: 0;
+      border-radius: 14px;
+
+      padding: 15px;
+
+      font-size: 16px;
+      font-weight: 800;
+
+      cursor: pointer;
+    }
+
+    .primary {
+      background: #ff7a00;
+      color: #111;
+    }
+
+    .secondary {
+      background: #303030;
+      color: #fff;
+    }
+
+    .preview-card {
+      margin-top: 16px;
+
+      padding: 20px;
+
+      background: #171717;
+
+      border: 1px solid #2b2b2b;
+      border-radius: 22px;
+    }
+
+    .preview-label {
+      color: #888;
+
+      font-size: 12px;
+      font-weight: 700;
+
+      margin-bottom: 12px;
+    }
+
+    #messagePreview {
+      white-space: pre-wrap;
+
+      line-height: 1.5;
+
+      font-size: 15px;
+    }
+
+    .copy-button {
+      width: 100%;
+
+      margin-top: 16px;
+
+      border: 0;
+      border-radius: 14px;
+
+      padding: 14px;
+
+      background: #25d366;
+      color: #071b0e;
+
+      font-size: 16px;
+      font-weight: 800;
+
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 520px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .lookup-row {
+        grid-template-columns: 1fr;
+      }
+
+      .lookup-button {
+        padding: 14px;
+      }
+    }
   </style>
 </head>
+
 <body>
-<div class="wrap">
-  <div class="brand">
-    <div class="logo">⚡</div>
-    <div><h1>Oferta Turbo</h1><div class="sub">Gerador rápido de ofertas para WhatsApp</div></div>
-  </div>
 
-  <div class="card">
-    <span class="pill">Amazon Afiliados</span><span class="pill">Mobile-first</span>
-    <label>Link de afiliado Amazon</label>
-    <input id="link" placeholder="https://amzn.to/..." inputmode="url">
+  <div class="container">
 
-    <label>Produto</label>
-    <input id="produto" placeholder="Ex.: Echo Dot 5ª geração">
+    <div class="header">
 
-    <div class="grid">
-      <div><label>Preço atual</label><input id="preco" placeholder="199,90" inputmode="decimal"></div>
-      <div><label>Preço anterior (opcional)</label><input id="antigo" placeholder="349,90" inputmode="decimal"></div>
-    </div>
-
-    <div class="grid">
-      <div><label>Categoria</label>
-        <select id="categoria">
-          <option>Eletrônicos</option><option>Informática</option><option>Casa</option><option>Cozinha</option>
-          <option>Ferramentas</option><option>Beleza</option><option>Games</option><option>Outros</option>
-        </select>
+      <div class="logo">
+        ⚡
       </div>
-      <div><label>Cupom (opcional)</label><input id="cupom" placeholder="Ex.: TURBO20"></div>
+
+      <div>
+        <h1>
+          Oferta Turbo
+        </h1>
+
+        <p>
+          Gerador rápido de ofertas para WhatsApp
+        </p>
+      </div>
+
     </div>
 
-    <label>Observação (opcional)</label>
-    <input id="obs" placeholder="Ex.: Frete grátis para Prime">
 
-    <div class="btns">
-      <button class="primary" onclick="gerar()">⚡ Gerar oferta</button>
-      <button class="ghost" onclick="limpar()">Limpar</button>
+    <div class="tabs">
+
+      <button
+        id="amazonTab"
+        class="tab active"
+        onclick="changePlatform('amazon')"
+      >
+        Amazon
+      </button>
+
+      <button
+        id="meliTab"
+        class="tab"
+        onclick="changePlatform('meli')"
+      >
+        Mercado Livre
+      </button>
+
     </div>
-  </div>
 
-  <div class="card">
-    <div class="preview-title">PRÉVIA DA MENSAGEM</div>
-    <div id="preview" class="preview">Preencha os dados e toque em “Gerar oferta”.</div>
-    <div class="btns">
-      <button class="green" onclick="whatsapp()">Enviar no WhatsApp</button>
-      <button class="ghost" onclick="copiar()">Copiar texto</button>
+
+    <div class="card">
+
+      <div class="field">
+
+        <label id="linkLabel">
+          Link de afiliado Amazon
+        </label>
+
+        <div
+          id="amazonLinkContainer"
+        >
+
+          <input
+            id="amazonLink"
+            type="url"
+            placeholder="https://amzn.to/..."
+          />
+
+        </div>
+
+
+        <div
+          id="meliLinkContainer"
+          class="hidden"
+        >
+
+          <div class="lookup-row">
+
+            <input
+              id="meliLink"
+              type="url"
+              placeholder="https://meli.la/..."
+            />
+
+            <button
+              id="lookupButton"
+              class="lookup-button"
+              onclick="buscarMercadoLivre()"
+            >
+              🔎 Buscar
+            </button>
+
+          </div>
+
+          <div
+            id="lookupStatus"
+            class="status"
+          ></div>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="productPreview"
+        class="product-preview"
+      >
+
+        <img
+          id="productImage"
+          src=""
+          alt="Produto"
+        />
+
+        <div class="product-preview-info">
+
+          <div
+            id="productPreviewTitle"
+            class="product-preview-title"
+          ></div>
+
+          <div>
+
+            <span
+              id="productPreviewPrice"
+              class="product-preview-price"
+            ></span>
+
+            <span
+              id="productPreviewDiscount"
+              class="discount"
+            ></span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          Produto
+        </label>
+
+        <input
+          id="product"
+          type="text"
+          placeholder="Ex.: Echo Dot 5ª geração"
+        />
+
+      </div>
+
+
+      <div class="row">
+
+        <div class="field">
+
+          <label>
+            Preço atual
+          </label>
+
+          <input
+            id="price"
+            type="text"
+            inputmode="decimal"
+            placeholder="199,90"
+          />
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Preço anterior
+          </label>
+
+          <input
+            id="oldPrice"
+            type="text"
+            inputmode="decimal"
+            placeholder="349,90"
+          />
+
+        </div>
+
+      </div>
+
+
+      <div class="row">
+
+        <div class="field">
+
+          <label>
+            Categoria
+          </label>
+
+          <select id="category">
+
+            <option>
+              Eletrônicos
+            </option>
+
+            <option>
+              Informática
+            </option>
+
+            <option>
+              Casa e cozinha
+            </option>
+
+            <option>
+              Ferramentas
+            </option>
+
+            <option>
+              Beleza
+            </option>
+
+            <option>
+              Games
+            </option>
+
+            <option>
+              Celulares
+            </option>
+
+            <option>
+              Outros
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Cupom (opcional)
+          </label>
+
+          <input
+            id="coupon"
+            type="text"
+            placeholder="Ex.: TURBO20"
+          />
+
+        </div>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          Observação (opcional)
+        </label>
+
+        <input
+          id="note"
+          type="text"
+          placeholder="Ex.: Frete grátis"
+        />
+
+      </div>
+
+
+      <div class="actions">
+
+        <button
+          class="button primary"
+          onclick="generateOffer()"
+        >
+          ⚡ Gerar oferta
+        </button>
+
+        <button
+          class="button secondary"
+          onclick="clearForm()"
+        >
+          Limpar
+        </button>
+
+      </div>
+
     </div>
-    <button class="ghost" style="width:100%;margin-top:10px" onclick="salvar()">Salvar oferta</button>
+
+
+    <div class="preview-card">
+
+      <div class="preview-label">
+        PRÉVIA DA MENSAGEM
+      </div>
+
+      <div id="messagePreview">
+        Preencha os dados e toque em “Gerar oferta”.
+      </div>
+
+      <button
+        id="copyButton"
+        class="copy-button hidden"
+        onclick="copyMessage()"
+      >
+        📋 Copiar mensagem
+      </button>
+
+    </div>
+
   </div>
 
-  <div class="card">
-    <div class="preview-title">OFERTAS SALVAS NESTE APARELHO</div>
-    <div id="lista"><div class="tiny">Nenhuma oferta salva ainda.</div></div>
-  </div>
-
-  <div class="card">
-    <b>Como usar</b>
-    <p class="tiny">Cole seu link de associado, informe produto e preço, gere a mensagem e envie direto para o seu canal/grupo do WhatsApp. Os dados ficam salvos somente no navegador deste aparelho.</p>
-  </div>
-
-  <div class="footer">Oferta Turbo • MVP 1.0</div>
-</div>
 
 <script>
-let textoAtual = "";
 
-function money(v){
-  if(!v) return "";
-  v = String(v).replace("R$","").trim();
-  return v.startsWith("R$") ? v : "R$ " + v;
+let platform = "amazon";
+
+let mercadoLivreData = null;
+
+
+function changePlatform(newPlatform) {
+
+  platform = newPlatform;
+
+  const amazonTab =
+    document.getElementById("amazonTab");
+
+  const meliTab =
+    document.getElementById("meliTab");
+
+  const amazonLinkContainer =
+    document.getElementById(
+      "amazonLinkContainer"
+    );
+
+  const meliLinkContainer =
+    document.getElementById(
+      "meliLinkContainer"
+    );
+
+  const label =
+    document.getElementById(
+      "linkLabel"
+    );
+
+
+  if (platform === "amazon") {
+
+    amazonTab.classList.add(
+      "active"
+    );
+
+    meliTab.classList.remove(
+      "active"
+    );
+
+    amazonLinkContainer.classList.remove(
+      "hidden"
+    );
+
+    meliLinkContainer.classList.add(
+      "hidden"
+    );
+
+    label.textContent =
+      "Link de afiliado Amazon";
+
+  } else {
+
+    meliTab.classList.add(
+      "active"
+    );
+
+    amazonTab.classList.remove(
+      "active"
+    );
+
+    meliLinkContainer.classList.remove(
+      "hidden"
+    );
+
+    amazonLinkContainer.classList.add(
+      "hidden"
+    );
+
+    label.textContent =
+      "Link de afiliado Mercado Livre";
+
+  }
+
 }
-function desconto(atual, antigo){
-  const a = parseFloat(String(atual).replace(".","").replace(",","."));
-  const b = parseFloat(String(antigo).replace(".","").replace(",","."));
-  if(!a || !b || b<=a) return "";
-  return Math.round((1-a/b)*100);
-}
-function gerar(){
-  const link = document.getElementById("link").value.trim();
-  const produto = document.getElementById("produto").value.trim();
-  const preco = document.getElementById("preco").value.trim();
-  const antigo = document.getElementById("antigo").value.trim();
-  const cupom = document.getElementById("cupom").value.trim();
-  const obs = document.getElementById("obs").value.trim();
-  const cat = document.getElementById("categoria").value;
-  if(!link || !produto || !preco){ alert("Preencha link, produto e preço."); return; }
-  const d = desconto(preco, antigo);
-  let t = `⚡ *OFERTA TURBO* ⚡\n\n🔥 *${produto}*\n`;
-  if(antigo) t += `\n❌ De: ~${money(antigo)}~`;
-  t += `\n✅ Por: *${money(preco)}*`;
-  if(d) t += `\n📉 *${d}% OFF*`;
-  if(cupom) t += `\n🎟️ Cupom: *${cupom}*`;
-  if(obs) t += `\n📦 ${obs}`;
-  t += `\n\n🛒 Comprar aqui:\n${link}`;
-  t += `\n\n🏷️ ${cat}`;
-  t += `\n\n⚠️ Preço e disponibilidade podem mudar a qualquer momento.`;
-  t += `\n_Como associado da Amazon, posso receber comissão por compras qualificadas._`;
-  textoAtual = t;
-  document.getElementById("preview").innerText = t;
-}
-function copiar(){
-  if(!textoAtual) gerar();
-  if(!textoAtual) return;
-  navigator.clipboard.writeText(textoAtual).then(()=>alert("Texto copiado!")).catch(()=>prompt("Copie o texto:",textoAtual));
-}
-function whatsapp(){
-  if(!textoAtual) gerar();
-  if(!textoAtual) return;
-  window.open("https://wa.me/?text="+encodeURIComponent(textoAtual),"_blank");
-}
-function salvar(){
-  if(!textoAtual) gerar();
-  if(!textoAtual) return;
-  const item = {
-    id: Date.now(),
-    produto: document.getElementById("produto").value.trim(),
-    preco: document.getElementById("preco").value.trim(),
-    texto: textoAtual,
-    data: new Date().toLocaleString("pt-BR")
-  };
-  const arr = JSON.parse(localStorage.getItem("ofertaTurbo")||"[]");
-  arr.unshift(item);
-  localStorage.setItem("ofertaTurbo",JSON.stringify(arr.slice(0,30)));
-  render();
-}
-function excluir(id){
-  let arr = JSON.parse(localStorage.getItem("ofertaTurbo")||"[]");
-  arr = arr.filter(x=>x.id!==id);
-  localStorage.setItem("ofertaTurbo",JSON.stringify(arr)); render();
-}
-function usar(id){
-  const arr = JSON.parse(localStorage.getItem("ofertaTurbo")||"[]");
-  const x = arr.find(i=>i.id===id); if(!x)return;
-  textoAtual=x.texto; document.getElementById("preview").innerText=textoAtual; window.scrollTo({top:500,behavior:"smooth"});
-}
-function render(){
-  const arr=JSON.parse(localStorage.getItem("ofertaTurbo")||"[]");
-  const el=document.getElementById("lista");
-  if(!arr.length){el.innerHTML='<div class="tiny">Nenhuma oferta salva ainda.</div>';return}
-  el.innerHTML=arr.map(x=>`<div class="saved"><div><b>${x.produto}</b><small>${money(x.preco)} • ${x.data}</small></div><div><button class="ghost" onclick="usar(${x.id})">Usar</button> <button class="danger" onclick="excluir(${x.id})">×</button></div></div>`).join("");
-}
-function limpar(){
-  ["link","produto","preco","antigo","cupom","obs"].forEach(id=>document.getElementById(id).value="");
-  textoAtual="";document.getElementById("preview").innerText='Preencha os dados e toque em “Gerar oferta”.';
-}
-render();
-</script>
-</body>
-</html>
+
+
+function setStatus(
+  text,
+  type
+) {
+
+  const status =
+    document
