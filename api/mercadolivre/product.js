@@ -105,7 +105,7 @@ function extractJsonLd(html) {
         }
       }
     } catch {
-      // Ignora JSON-LD inválido.
+      // ignora JSON-LD inválido
     }
   }
 
@@ -160,37 +160,6 @@ async function resolveProduct(startUrl) {
 
     if (contentType.includes("text/html")) {
       lastHtml = await response.text();
-
-      const canonical =
-        extractMeta(lastHtml, "og:url") ||
-        lastHtml.match(
-          /<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i
-        )?.[1];
-
-      /*
-       * Só segue canonical se realmente
-       * levar para outra página.
-       */
-      if (
-        canonical &&
-        canonical !== currentUrl
-      ) {
-        const nextUrl = new URL(
-          canonical,
-          currentUrl
-        ).toString();
-
-        /*
-         * Evita ficar preso em loop.
-         */
-        if (
-          nextUrl !== currentUrl &&
-          !currentUrl.includes(nextUrl)
-        ) {
-          currentUrl = nextUrl;
-          continue;
-        }
-      }
     }
 
     break;
@@ -211,16 +180,195 @@ function normalizePrice(value) {
     return value;
   }
 
-  const clean = String(value)
-    .replace(/[^\d.,]/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
+  let text = String(value)
+    .trim()
+    .replace(/\s/g, "")
+    .replace(/[R$]/gi, "");
 
-  const parsed = Number(clean);
+  if (!text) return null;
+
+  /*
+   * Exemplos:
+   * 35,91
+   * 1.299,90
+   * 35.91
+   */
+  if (
+    text.includes(".") &&
+    text.includes(",")
+  ) {
+    text = text
+      .replace(/\./g, "")
+      .replace(",", ".");
+  } else if (text.includes(",")) {
+    text = text.replace(",", ".");
+  }
+
+  text = text.replace(/[^\d.]/g, "");
+
+  const parsed = Number(text);
 
   return Number.isFinite(parsed)
     ? parsed
     : null;
+}
+
+function firstPriceMatch(html, patterns) {
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+
+    if (match?.[1]) {
+      const value = normalizePrice(match[1]);
+
+      if (value !== null) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractPriceData(html, jsonLd) {
+  let price = null;
+  let originalPrice = null;
+  let discountPercent = null;
+
+  const offers = jsonLd?.offers || {};
+
+  /*
+   * 1) JSON-LD / metas padrão
+   */
+  price =
+    normalizePrice(offers?.price) ||
+    normalizePrice(
+      extractMeta(
+        html,
+        "product:price:amount"
+      )
+    );
+
+  /*
+   * 2) Padrões internos comuns do Mercado Livre
+   */
+  if (!price) {
+    price = firstPriceMatch(html, [
+      /"price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"amount"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"current_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"currentPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"sale_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+      /"salePrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    ]);
+  }
+
+  /*
+   * 3) Procura preço no HTML visível
+   *
+   * Ex:
+   * R$ 35,91
+   */
+  if (!price) {
+    price = firstPriceMatch(html, [
+      /R\$\s*([0-9.]+,[0-9]{2})/i,
+      /R\$\s*([0-9.]+)/i,
+    ]);
+  }
+
+  /*
+   * Preço anterior
+   */
+  originalPrice = firstPriceMatch(html, [
+    /"original_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"originalPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"previous_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"previousPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"list_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"listPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+  ]);
+
+  /*
+   * Padrão visual de preço riscado.
+   * Exemplo:
+   * R$ 61
+   */
+  if (!originalPrice) {
+    const allPrices = [
+      ...html.matchAll(
+        /R\$\s*([0-9.]+(?:,[0-9]{2})?)/gi
+      ),
+    ]
+      .map((match) =>
+        normalizePrice(match[1])
+      )
+      .filter(
+        (value) =>
+          value !== null &&
+          value > 0
+      );
+
+    if (price && allPrices.length) {
+      const possiblePrevious =
+        allPrices.filter(
+          (value) => value > price
+        );
+
+      if (possiblePrevious.length) {
+        originalPrice = Math.min(
+          ...possiblePrevious
+        );
+      }
+    }
+  }
+
+  /*
+   * Desconto explícito no HTML.
+   * Ex: 41% OFF
+   */
+  const discountMatch =
+    html.match(
+      /(\d{1,2})\s*%\s*OFF/i
+    );
+
+  if (discountMatch?.[1]) {
+    discountPercent =
+      Number(discountMatch[1]);
+  }
+
+  /*
+   * Se não achou explicitamente,
+   * calcula pelo preço anterior.
+   */
+  if (
+    !discountPercent &&
+    originalPrice &&
+    price &&
+    originalPrice > price
+  ) {
+    discountPercent =
+      Math.round(
+        ((originalPrice - price) /
+          originalPrice) *
+          100
+      );
+  }
+
+  /*
+   * Sanitização
+   */
+  if (
+    originalPrice &&
+    price &&
+    originalPrice <= price
+  ) {
+    originalPrice = null;
+  }
+
+  return {
+    price,
+    originalPrice,
+    discountPercent,
+  };
 }
 
 module.exports = async function handler(req, res) {
@@ -259,9 +407,6 @@ module.exports = async function handler(req, res) {
     const jsonLd =
       extractJsonLd(html);
 
-    const offers =
-      jsonLd?.offers || {};
-
     /*
      * Nome
      */
@@ -283,77 +428,16 @@ module.exports = async function handler(req, res) {
     }
 
     /*
-     * Preço atual
+     * Preços e desconto
      */
-    let price =
-      normalizePrice(
-        offers?.price ??
-        extractMeta(
-          html,
-          "product:price:amount"
-        )
-      );
-
-    /*
-     * Outros padrões encontrados
-     * em páginas de e-commerce.
-     */
-    if (!price) {
-      const priceMatch =
-        html.match(
-          /"price"\s*:\s*"?([\d.]+)"?/i
-        ) ||
-        html.match(
-          /"amount"\s*:\s*([\d.]+)/i
-        );
-
-      if (priceMatch?.[1]) {
-        price =
-          normalizePrice(priceMatch[1]);
-      }
-    }
-
-    /*
-     * Preço anterior.
-     */
-    let originalPrice = null;
-
-    const originalPatterns = [
-      /"original_price"\s*:\s*([\d.]+)/i,
-      /"originalPrice"\s*:\s*([\d.]+)/i,
-      /"previous_price"\s*:\s*([\d.]+)/i,
-      /"previousPrice"\s*:\s*([\d.]+)/i,
-    ];
-
-    for (
-      const pattern of originalPatterns
-    ) {
-      const match = html.match(pattern);
-
-      if (match?.[1]) {
-        originalPrice =
-          normalizePrice(match[1]);
-
-        break;
-      }
-    }
-
-    if (
-      originalPrice &&
-      price &&
-      originalPrice <= price
-    ) {
-      originalPrice = null;
-    }
-
-    const discountPercent =
-      originalPrice && price
-        ? Math.round(
-            ((originalPrice - price) /
-              originalPrice) *
-              100
-          )
-        : null;
+    const {
+      price,
+      originalPrice,
+      discountPercent,
+    } = extractPriceData(
+      html,
+      jsonLd
+    );
 
     /*
      * ID MLB
@@ -371,7 +455,11 @@ module.exports = async function handler(req, res) {
         html
       );
 
-    if (!title && !price && !image) {
+    if (
+      !title &&
+      !price &&
+      !image
+    ) {
       return res.status(422).json({
         error:
           "A página foi encontrada, mas não foi possível extrair os dados do produto.",
@@ -407,7 +495,8 @@ module.exports = async function handler(req, res) {
         free_shipping:
           freeShipping,
 
-        affiliate_url: url,
+        affiliate_url:
+          url,
 
         final_url:
           finalUrl,
