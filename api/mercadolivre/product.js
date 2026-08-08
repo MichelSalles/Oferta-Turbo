@@ -25,27 +25,13 @@ function extractItemId(text = "") {
   return null;
 }
 
-function getCookie(req, name) {
-  const cookies = req.headers.cookie || "";
-
-  const cookie = cookies
-    .split(";")
-    .map((item) => item.trim())
-    .find((item) => item.startsWith(`${name}=`));
-
-  if (!cookie) return null;
-
-  return decodeURIComponent(
-    cookie.substring(name.length + 1)
-  );
-}
-
 async function resolveMercadoLivreUrl(startUrl) {
   let currentUrl = startUrl;
 
   const headers = {
     "User-Agent":
       "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+
     Accept:
       "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   };
@@ -53,6 +39,7 @@ async function resolveMercadoLivreUrl(startUrl) {
   for (let i = 0; i < 8; i++) {
     console.log(`Redirect ${i}:`, currentUrl);
 
+    // Primeiro tenta encontrar o MLB diretamente na URL
     const directId = extractItemId(currentUrl);
 
     if (directId) {
@@ -68,6 +55,7 @@ async function resolveMercadoLivreUrl(startUrl) {
       headers,
     });
 
+    // Verifica redirecionamento HTTP
     const location = response.headers.get("location");
 
     if (location) {
@@ -82,6 +70,7 @@ async function resolveMercadoLivreUrl(startUrl) {
     const contentType =
       response.headers.get("content-type") || "";
 
+    // Se recebemos HTML, procuramos o MLB dentro da página
     if (contentType.includes("text/html")) {
       const html = await response.text();
 
@@ -94,6 +83,7 @@ async function resolveMercadoLivreUrl(startUrl) {
         };
       }
 
+      // Procura URL canonical ou og:url
       const canonical =
         html.match(
           /<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i
@@ -114,6 +104,7 @@ async function resolveMercadoLivreUrl(startUrl) {
         }
       }
 
+      // Alguns redirecionamentos usam meta refresh
       const httpEquiv = html.match(
         /url=([^"'<> ]+)/i
       );
@@ -161,10 +152,12 @@ module.exports = async function handler(req, res) {
 
     let finalUrl = url || "";
 
+    // Tenta encontrar MLB diretamente no link
     if (!itemId && url) {
       itemId = extractItemId(url);
     }
 
+    // Se for meli.la/social/etc., resolve o link
     if (!itemId && url) {
       const resolved =
         await resolveMercadoLivreUrl(url);
@@ -177,43 +170,53 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({
         error:
           "Não foi possível identificar o ID do produto.",
+
         original_url: url || null,
         final_url: finalUrl || null,
       });
     }
 
-    console.log("Produto identificado:", itemId);
-
-    const accessToken = getCookie(
-      req,
-      "meli_access_token"
+    console.log(
+      "Produto identificado:",
+      itemId
     );
 
-    const headers = {
-      Accept: "application/json",
-    };
-
-    if (accessToken) {
-      headers.Authorization =
-        `Bearer ${accessToken}`;
-    }
+    /*
+     * IMPORTANTE:
+     *
+     * Não enviamos o access_token aqui.
+     *
+     * Estamos testando a consulta pública
+     * do produto diretamente na API.
+     */
 
     const response = await fetch(
       `https://api.mercadolibre.com/items/${itemId}`,
       {
         method: "GET",
-        headers,
+
+        headers: {
+          Accept: "application/json",
+        },
       }
     );
 
     const data = await response.json();
 
     if (!response.ok) {
+      console.error(
+        "Erro API Mercado Livre:",
+        data
+      );
+
       return res
         .status(response.status)
         .json({
           error:
             "Erro ao consultar produto no Mercado Livre.",
+
+          item_id: itemId,
+
           details: data,
         });
     }
@@ -250,31 +253,54 @@ module.exports = async function handler(req, res) {
 
       product: {
         id: data.id,
+
         title: data.title,
+
         price: data.price,
-        original_price: originalPrice,
-        discount_percent: discountPercent,
-        currency: data.currency_id,
 
-        permalink: data.permalink,
-        original_url: url || null,
+        original_price:
+          originalPrice,
+
+        discount_percent:
+          discountPercent,
+
+        currency:
+          data.currency_id,
+
+        permalink:
+          data.permalink,
+
+        original_url:
+          url || null,
+
         final_url:
-          finalUrl || data.permalink,
+          finalUrl ||
+          data.permalink,
 
-        thumbnail: data.thumbnail,
+        thumbnail:
+          data.thumbnail,
+
         pictures,
 
-        condition: data.condition,
+        condition:
+          data.condition,
+
         available_quantity:
           data.available_quantity,
+
         sold_quantity:
           data.sold_quantity,
 
         free_shipping:
-          data.shipping?.free_shipping === true,
+          data.shipping?.free_shipping ===
+          true,
 
-        category_id: data.category_id,
-        seller_id: data.seller_id,
+        category_id:
+          data.category_id,
+
+        seller_id:
+          data.seller_id,
+
         listing_type_id:
           data.listing_type_id,
       },
@@ -288,6 +314,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({
       error:
         "Erro interno ao consultar produto.",
+
       message:
         error?.message ||
         "Erro desconhecido.",
