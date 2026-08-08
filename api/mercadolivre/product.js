@@ -105,7 +105,7 @@ function extractJsonLd(html) {
         }
       }
     } catch {
-      // ignora JSON-LD inválido
+      // Ignora JSON-LD inválido
     }
   }
 
@@ -212,34 +212,10 @@ function normalizePrice(value) {
     : null;
 }
 
-function firstPriceMatch(html, patterns) {
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-
-    if (match?.[1]) {
-      const value =
-        normalizePrice(match[1]);
-
-      if (value !== null) {
-        return value;
-      }
-    }
-  }
-
-  return null;
-}
-
-function extractSplitMercadoLivrePrices(html) {
+function extractSplitPrices(html) {
   const results = [];
 
-  /*
-   * Tenta encontrar blocos onde o Mercado Livre
-   * separa parte inteira e centavos.
-   *
-   * Exemplo visual:
-   * 35 + 91 => 35.91
-   */
-  const splitPatterns = [
+  const patterns = [
     /(?:andes-money-amount__fraction|price-tag-fraction)[^>]*>\s*([0-9.]+)\s*<[\s\S]{0,300}?(?:andes-money-amount__cents|price-tag-cents)[^>]*>\s*([0-9]{1,2})\s*</gi,
 
     /"fraction"\s*:\s*"?([0-9.]+)"?[\s\S]{0,200}?"cents"\s*:\s*"?([0-9]{1,2})"?/gi,
@@ -247,7 +223,7 @@ function extractSplitMercadoLivrePrices(html) {
     /"integer"\s*:\s*"?([0-9.]+)"?[\s\S]{0,200}?"decimal"\s*:\s*"?([0-9]{1,2})"?/gi,
   ];
 
-  for (const pattern of splitPatterns) {
+  for (const pattern of patterns) {
     let match;
 
     while (
@@ -272,18 +248,12 @@ function extractSplitMercadoLivrePrices(html) {
     }
   }
 
-  return [
-    ...new Set(results),
-  ];
+  return results;
 }
 
 function extractVisiblePrices(html) {
-  const values = [];
+  const results = [];
 
-  /*
-   * R$ 35,91
-   * R$ 61
-   */
   const regex =
     /R\$\s*([0-9.]+(?:,[0-9]{1,2})?)/gi;
 
@@ -299,31 +269,72 @@ function extractVisiblePrices(html) {
       value !== null &&
       value > 0
     ) {
-      values.push(value);
+      results.push(value);
     }
   }
 
-  return [
-    ...new Set(values),
-  ];
+  return results;
+}
+
+function roundMoney(value) {
+  return Math.round(value * 100) / 100;
+}
+
+function calculatePreviousPrice(
+  currentPrice,
+  discountPercent
+) {
+  if (
+    !currentPrice ||
+    !discountPercent ||
+    discountPercent <= 0 ||
+    discountPercent >= 100
+  ) {
+    return null;
+  }
+
+  const estimated =
+    currentPrice /
+    (1 - discountPercent / 100);
+
+  /*
+   * Mercado Livre frequentemente mostra
+   * o preço antigo sem centavos.
+   *
+   * Ex:
+   * 35,91 com 41% OFF
+   * estimado = 60,86
+   * exibido = 61
+   */
+  const nearestInteger =
+    Math.round(estimated);
+
+  if (
+    Math.abs(
+      estimated - nearestInteger
+    ) <= 0.20
+  ) {
+    return nearestInteger;
+  }
+
+  return roundMoney(estimated);
 }
 
 function extractPriceData(
   html,
   jsonLd,
-  discountPercentFromPage
+  discountPercent
 ) {
-  let price = null;
-  let originalPrice = null;
-
   const offers =
     jsonLd?.offers || {};
 
   /*
-   * 1. JSON-LD / metas
+   * Primeiro tenta os dados estruturados.
    */
-  price =
-    normalizePrice(offers?.price) ||
+  let price =
+    normalizePrice(
+      offers?.price
+    ) ||
     normalizePrice(
       extractMeta(
         html,
@@ -332,186 +343,115 @@ function extractPriceData(
     );
 
   /*
-   * 2. Campos internos
-   */
-  if (!price) {
-    price = firstPriceMatch(html, [
-      /"price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"current_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"currentPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"sale_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"salePrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    ]);
-  }
-
-  originalPrice =
-    firstPriceMatch(html, [
-      /"original_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"originalPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"previous_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"previousPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"list_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-      /"listPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
-    ]);
-
-  /*
-   * 3. Preços separados em reais + centavos
+   * Lista de preços na ordem em que
+   * aparecem no HTML.
+   *
+   * Isso é importante porque o produto
+   * principal aparece antes das recomendações.
    */
   const splitPrices =
-    extractSplitMercadoLivrePrices(html);
+    extractSplitPrices(html);
 
-  /*
-   * 4. Preços visíveis no HTML
-   */
   const visiblePrices =
     extractVisiblePrices(html);
 
-  const candidates = [
-    ...splitPrices,
-    ...visiblePrices,
-  ]
-    .filter(
-      (value) =>
-        Number.isFinite(value) &&
-        value > 0 &&
-        value < 1000000
-    );
+  const allCandidates = [];
 
-  const uniqueCandidates = [
-    ...new Set(candidates),
-  ];
+  for (
+    const value of [
+      ...splitPrices,
+      ...visiblePrices,
+    ]
+  ) {
+    if (
+      !Number.isFinite(value) ||
+      value <= 0 ||
+      value >= 1000000
+    ) {
+      continue;
+    }
+
+    if (
+      !allCandidates.includes(value)
+    ) {
+      allCandidates.push(value);
+    }
+  }
 
   /*
-   * Se ainda não temos preço,
-   * tenta inferir pelo desconto conhecido.
+   * Se JSON-LD não trouxe o preço,
+   * usamos o PRIMEIRO preço capturado.
    *
-   * Ex.: 35.91 e 61 com 41%.
+   * No seu caso:
+   * 35.91 é o primeiro valor.
+   *
+   * Isso evita pegar preços dos produtos
+   * recomendados abaixo.
    */
   if (
     !price &&
-    uniqueCandidates.length
+    allCandidates.length > 0
   ) {
-    if (
-      discountPercentFromPage
-    ) {
-      let bestPair = null;
-      let bestDifference =
-        Infinity;
+    price =
+      allCandidates[0];
+  }
 
-      for (
-        const current of uniqueCandidates
-      ) {
-        for (
-          const previous of uniqueCandidates
-        ) {
-          if (previous <= current) {
-            continue;
-          }
+  /*
+   * Procura preço anterior explícito.
+   */
+  const originalPatterns = [
+    /"original_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"originalPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"previous_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"previousPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"list_price"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+    /"listPrice"\s*:\s*([0-9]+(?:\.[0-9]+)?)/i,
+  ];
 
-          const calculated =
-            Math.round(
-              ((previous - current) /
-                previous) *
-                100
-            );
+  let originalPrice = null;
 
-          const difference =
-            Math.abs(
-              calculated -
-                discountPercentFromPage
-            );
+  for (
+    const pattern of originalPatterns
+  ) {
+    const match =
+      html.match(pattern);
 
-          if (
-            difference <
-            bestDifference
-          ) {
-            bestDifference =
-              difference;
-
-            bestPair = {
-              current,
-              previous,
-            };
-          }
-        }
-      }
+    if (match?.[1]) {
+      const candidate =
+        normalizePrice(match[1]);
 
       if (
-        bestPair &&
-        bestDifference <= 2
+        candidate &&
+        price &&
+        candidate > price
       ) {
-        price =
-          bestPair.current;
-
         originalPrice =
-          bestPair.previous;
+          candidate;
+
+        break;
       }
     }
-
-    /*
-     * Se não encontrou par pelo desconto,
-     * pega o menor valor como preço atual.
-     */
-    if (!price) {
-      price = Math.min(
-        ...uniqueCandidates
-      );
-    }
   }
 
   /*
-   * Descobre preço anterior
-   * caso ainda esteja faltando.
+   * Se não encontrou o preço anterior
+   * explicitamente, calculamos usando
+   * o desconto oficial da página.
    */
   if (
-    price &&
     !originalPrice &&
-    uniqueCandidates.length
-  ) {
-    const higherPrices =
-      uniqueCandidates
-        .filter(
-          (value) =>
-            value > price
-        )
-        .sort(
-          (a, b) => a - b
-        );
-
-    if (higherPrices.length) {
-      originalPrice =
-        higherPrices[0];
-    }
-  }
-
-  /*
-   * Se temos desconto e preço atual,
-   * podemos estimar o preço anterior
-   * como último fallback.
-   */
-  if (
     price &&
-    !originalPrice &&
-    discountPercentFromPage &&
-    discountPercentFromPage > 0 &&
-    discountPercentFromPage < 100
+    discountPercent
   ) {
-    const estimated =
-      price /
-      (
-        1 -
-        discountPercentFromPage /
-          100
-      );
-
     originalPrice =
-      Math.round(
-        estimated * 100
-      ) / 100;
+      calculatePreviousPrice(
+        price,
+        discountPercent
+      );
   }
 
   /*
-   * Validação
+   * Segurança.
    */
   if (
     originalPrice &&
@@ -521,29 +461,12 @@ function extractPriceData(
     originalPrice = null;
   }
 
-  let discountPercent =
-    discountPercentFromPage ||
-    null;
-
-  if (
-    !discountPercent &&
-    price &&
-    originalPrice
-  ) {
-    discountPercent =
-      Math.round(
-        ((originalPrice - price) /
-          originalPrice) *
-          100
-      );
-  }
-
   return {
     price,
     originalPrice,
     discountPercent,
-    debugCandidates:
-      uniqueCandidates,
+    candidates:
+      allCandidates,
   };
 }
 
@@ -626,18 +549,22 @@ module.exports = async function handler(
     if (
       Array.isArray(image)
     ) {
-      image = image[0];
+      image =
+        image[0];
     }
 
     /*
-     * Desconto explícito
+     * Desconto oficial exibido.
+     *
+     * Ex:
+     * 41% OFF
      */
     const discountMatch =
       html.match(
         /(\d{1,2})\s*%\s*OFF/i
       );
 
-    const explicitDiscount =
+    const discountPercent =
       discountMatch?.[1]
         ? Number(
             discountMatch[1]
@@ -645,21 +572,18 @@ module.exports = async function handler(
         : null;
 
     /*
-     * Preços
+     * Preço atual +
+     * preço anterior.
      */
-    const {
-      price,
-      originalPrice,
-      discountPercent,
-      debugCandidates,
-    } = extractPriceData(
-      html,
-      jsonLd,
-      explicitDiscount
-    );
+    const prices =
+      extractPriceData(
+        html,
+        jsonLd,
+        discountPercent
+      );
 
     /*
-     * ID
+     * ID MLB
      */
     const itemId =
       extractItemId(html) ||
@@ -676,23 +600,6 @@ module.exports = async function handler(
         html
       );
 
-    if (
-      !title &&
-      !price &&
-      !image
-    ) {
-      return res.status(422).json({
-        error:
-          "A página foi encontrada, mas não foi possível extrair os dados do produto.",
-
-        item_id:
-          itemId,
-
-        final_url:
-          finalUrl,
-      });
-    }
-
     return res.status(200).json({
       success: true,
 
@@ -703,13 +610,14 @@ module.exports = async function handler(
         title:
           title || null,
 
-        price,
+        price:
+          prices.price,
 
         original_price:
-          originalPrice,
+          prices.originalPrice,
 
         discount_percent:
-          discountPercent,
+          prices.discountPercent,
 
         image:
           image || null,
@@ -728,12 +636,14 @@ module.exports = async function handler(
       },
 
       /*
-       * Temporário para diagnóstico.
-       * Depois retiramos.
+       * Ainda vamos deixar esse debug
+       * durante o teste.
+       *
+       * Depois removemos.
        */
       debug: {
         price_candidates:
-          debugCandidates,
+          prices.candidates,
       },
     });
   } catch (error) {
