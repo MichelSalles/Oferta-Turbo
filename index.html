@@ -355,282 +355,259 @@
 
 <body>
 
-  <div class="container">
+<div class="container">
 
-    <div class="header">
+  <div class="header">
 
-      <div class="logo">
-        ⚡
-      </div>
-
-      <div>
-        <h1>Oferta Turbo</h1>
-
-        <p>
-          Gerador rápido de ofertas para WhatsApp
-        </p>
-      </div>
-
+    <div class="logo">
+      ⚡
     </div>
 
+    <div>
+      <h1>Oferta Turbo</h1>
 
-    <div class="tabs">
-
-      <button
-        id="amazonTab"
-        class="tab active"
-        type="button"
-      >
-        Amazon
-      </button>
-
-      <button
-        id="meliTab"
-        class="tab"
-        type="button"
-      >
-        Mercado Livre
-      </button>
-
+      <p>
+        Gerador rápido de ofertas para WhatsApp
+      </p>
     </div>
 
-
-    <div class="card">
-
-      <div class="field">
-
-        <label id="linkLabel">
-          Link de afiliado Amazon
-        </label>
+  </div>
 
 
-        <div id="amazonLinkContainer">
+  <div class="tabs">
 
-          <input
-            id="amazonLink"
-            type="url"
-            placeholder="https://amzn.to/..."
-          />
+    <button
+      id="amazonTab"
+      class="tab active"
+      type="button"
+    >
+      Amazon
+    </button>
 
-        </div>
+    <button
+      id="meliTab"
+      class="tab"
+      type="button"
+    >
+      Mercado Livre
+    </button>
+
+  </div>
 
 
-        <div
-          id="meliLinkContainer"
-          class="hidden"
-        >
+  <div class="card">
 
-          <div class="lookup-row">
+    <div class="field">
 
-            <input
-              id="meliLink"
-              type="url"
-              placeholder="https://meli.la/..."
-            />
+      <label id="linkLabel">
+        Link de afiliado Amazon
+      </label>
 
-            <button
-              id="lookupButton"
-              class="lookup-button"
-              type="button"
-            >
-              🔎 Buscar
-            </button>
 
-          </div>
+      <div id="amazonLinkContainer">
 
-          <div
-            id="lookupStatus"
-            class="status"
-          ></div>
-
-        </div>
+        <input
+          id="amazonLink"
+          type="url"
+          placeholder="https://amzn.to/..."
+        />
 
       </div>
 
 
       <div
-        id="productPreview"
-        class="product-preview"
+        id="meliLinkContainer"
+        class="hidden"
       >
 
-        <img
-          id="productImage"
-          src=""
-          alt="Produto"
-        />
-
-        <div class="product-preview-info">
-
-          <div
-            id="productPreviewTitle"
-            class="product-preview-title"
-          ></div>
-
-          <div>
-
-            <span
-              id="productPreviewPrice"
-              class="product-preview-price"
-            ></span>
-
-            <span
-              id="productPreviewDiscount"
-              class="discount"
-            ></span>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          Produto
-        </label>
-
-        <input
-          id="product"
-          type="text"
-          placeholder="Ex.: Echo Dot 5ª geração"
-        />
-
-      </div>
-
-
-      <div class="row">
-
-        <div class="field">
-
-          <label>
-            Preço atual
-          </label>
+        <div class="lookup-row">
 
           <input
-            id="price"
-            type="text"
-            inputmode="decimal"
-            placeholder="199,90"
+            id="meliLink"
+            type="url"
+            placeholder="https://meli.la/..."
           />
 
-        </div>
-
-
-        <div class="field">
-
-          <label>
-            Preço anterior
-          </label>
-
-          <input
-            id="oldPrice"
-            type="text"
-            inputmode="decimal"
-            placeholder="349,90"
-          />
+          <button
+            id="lookupButton"
+            class="lookup-button"
+            type="button"
+          >
+            🔎 Buscar
+          </button>
 
         </div>
 
-      </div>
-
-
-      <div class="row">
-
-        <div class="field">
-
-          <label>
-            Categoria
-          </label>
-
-          <select id="category">
-
-            <option>Eletrônicos</option>
-            <option>Informática</option>
-            <option>Casa e cozinha</option>
-            <option>Ferramentas</option>
-            <option>Beleza</option>
-            <option>Games</option>
-            <option>Celulares</option>
-            <option>Outros</option>
-
-          </select>
-
-        </div>
-
-
-        <div class="field">
-
-          <label>
-            Cupom (opcional)
-          </label>
-
-          <input
-            id="coupon"
-            type="text"
-            placeholder="Ex.: TURBO20"
-          />
-
-        </div>
-
-      </div>
-
-
-      <div class="field">
-
-        <label>
-          Observação (opcional)
-        </label>
-
-        <input
-          id="note"
-          type="text"
-          placeholder="Ex.: Frete grátis"
-        />
-
-      </div>
-
-
-      <div class="actions">
-
-        <button
-          id="generateButton"
-          class="button primary"
-          type="button"
-        >
-          ⚡ Gerar oferta
-        </button>
-
-        <button
-          id="clearButton"
-          class="button secondary"
-          type="button"
-        >
-          Limpar
-        </button>
+        <div
+          id="lookupStatus"
+          class="status"
+        ></div>
 
       </div>
 
     </div>
 
 
-    <div class="preview-card">
+    <div
+      id="productPreview"
+      class="product-preview"
+    >
 
-      <div class="preview-label">
-        PRÉVIA DA MENSAGEM
+      <img
+        id="productImage"
+        src=""
+        alt="Produto"
+      />
+
+      <div class="product-preview-info">
+
+        <div
+          id="productPreviewTitle"
+          class="product-preview-title"
+        ></div>
+
+        <div>
+
+          <span
+            id="productPreviewPrice"
+            class="product-preview-price"
+          ></span>
+
+          <span
+            id="productPreviewDiscount"
+            class="discount"
+          ></span>
+
+        </div>
+
       </div>
 
-      <div id="messagePreview">
-        Preencha os dados e toque em “Gerar oferta”.
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Produto
+      </label>
+
+      <input
+        id="product"
+        type="text"
+        placeholder="Ex.: Echo Dot 5ª geração"
+      />
+
+    </div>
+
+
+    <div class="row">
+
+      <div class="field">
+
+        <label>
+          Preço atual
+        </label>
+
+        <input
+          id="price"
+          type="text"
+          inputmode="decimal"
+          placeholder="199,90"
+        />
+
       </div>
+
+
+      <div class="field">
+
+        <label>
+          Preço anterior
+        </label>
+
+        <input
+          id="oldPrice"
+          type="text"
+          inputmode="decimal"
+          placeholder="349,90"
+        />
+
+      </div>
+
+    </div>
+
+
+    <div class="row">
+
+      <div class="field">
+
+        <label>
+          Categoria
+        </label>
+
+        <select id="category">
+
+          <option>Eletrônicos</option>
+          <option>Informática</option>
+          <option>Casa e cozinha</option>
+          <option>Ferramentas</option>
+          <option>Beleza</option>
+          <option>Games</option>
+          <option>Celulares</option>
+          <option>Outros</option>
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          Cupom (opcional)
+        </label>
+
+        <input
+          id="coupon"
+          type="text"
+          placeholder="Ex.: TURBO20"
+        />
+
+      </div>
+
+    </div>
+
+
+    <div class="field">
+
+      <label>
+        Observação (opcional)
+      </label>
+
+      <input
+        id="note"
+        type="text"
+        placeholder="Ex.: Frete grátis"
+      />
+
+    </div>
+
+
+    <div class="actions">
 
       <button
-        id="copyButton"
-        class="copy-button hidden"
+        id="generateButton"
+        class="button primary"
         type="button"
       >
-        📋 Copiar mensagem
+        ⚡ Gerar oferta
+      </button>
+
+      <button
+        id="clearButton"
+        class="button secondary"
+        type="button"
+      >
+        Limpar
       </button>
 
     </div>
@@ -638,645 +615,1037 @@
   </div>
 
 
+  <div class="preview-card">
+
+    <div class="preview-label">
+      PRÉVIA DA MENSAGEM
+    </div>
+
+    <div id="messagePreview">
+      Preencha os dados e toque em “Gerar oferta”.
+    </div>
+
+    <button
+      id="copyButton"
+      class="copy-button hidden"
+      type="button"
+    >
+      📋 Copiar mensagem
+    </button>
+
+  </div>
+
+</div>
+
+
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener(
+  "DOMContentLoaded",
+  function () {
 
-  let platform = "amazon";
-  let mercadoLivreData = null;
+    let platform =
+      "amazon";
 
-
-  const amazonTab =
-    document.getElementById("amazonTab");
-
-  const meliTab =
-    document.getElementById("meliTab");
-
-  const amazonLinkContainer =
-    document.getElementById(
-      "amazonLinkContainer"
-    );
-
-  const meliLinkContainer =
-    document.getElementById(
-      "meliLinkContainer"
-    );
-
-  const linkLabel =
-    document.getElementById(
-      "linkLabel"
-    );
-
-  const lookupButton =
-    document.getElementById(
-      "lookupButton"
-    );
-
-  const generateButton =
-    document.getElementById(
-      "generateButton"
-    );
-
-  const clearButton =
-    document.getElementById(
-      "clearButton"
-    );
-
-  const copyButton =
-    document.getElementById(
-      "copyButton"
-    );
+    let mercadoLivreData =
+      null;
 
 
-  function changePlatform(
-    newPlatform
-  ) {
-
-    platform =
-      newPlatform;
-
-    if (
-      newPlatform === "amazon"
-    ) {
-
-      amazonTab.classList.add(
-        "active"
-      );
-
-      meliTab.classList.remove(
-        "active"
-      );
-
-      amazonLinkContainer.classList.remove(
-        "hidden"
-      );
-
-      meliLinkContainer.classList.add(
-        "hidden"
-      );
-
-      linkLabel.textContent =
-        "Link de afiliado Amazon";
-
-    } else {
-
-      meliTab.classList.add(
-        "active"
-      );
-
-      amazonTab.classList.remove(
-        "active"
-      );
-
-      meliLinkContainer.classList.remove(
-        "hidden"
-      );
-
-      amazonLinkContainer.classList.add(
-        "hidden"
-      );
-
-      linkLabel.textContent =
-        "Link de afiliado Mercado Livre";
-
-    }
-
-  }
-
-
-  function setStatus(
-    text,
-    type
-  ) {
-
-    const status =
+    const amazonTab =
       document.getElementById(
-        "lookupStatus"
+        "amazonTab"
       );
 
-    status.textContent =
-      text;
+    const meliTab =
+      document.getElementById(
+        "meliTab"
+      );
 
-    status.className =
-      `status show ${type}`;
+    const amazonLinkContainer =
+      document.getElementById(
+        "amazonLinkContainer"
+      );
 
-  }
+    const meliLinkContainer =
+      document.getElementById(
+        "meliLinkContainer"
+      );
+
+    const linkLabel =
+      document.getElementById(
+        "linkLabel"
+      );
+
+    const lookupButton =
+      document.getElementById(
+        "lookupButton"
+      );
+
+    const generateButton =
+      document.getElementById(
+        "generateButton"
+      );
+
+    const clearButton =
+      document.getElementById(
+        "clearButton"
+      );
+
+    const copyButton =
+      document.getElementById(
+        "copyButton"
+      );
 
 
-  function formatMoney(value) {
-
-    if (
-      value === null ||
-      value === undefined ||
-      value === ""
+    function changePlatform(
+      newPlatform
     ) {
-      return "";
-    }
 
-    const number =
-      Number(value);
+      platform =
+        newPlatform;
 
-    if (
-      !Number.isFinite(number)
-    ) {
-      return "";
-    }
 
-    return number.toLocaleString(
-      "pt-BR",
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+      if (
+        newPlatform === "amazon"
+      ) {
+
+        amazonTab.classList.add(
+          "active"
+        );
+
+        meliTab.classList.remove(
+          "active"
+        );
+
+        amazonLinkContainer.classList.remove(
+          "hidden"
+        );
+
+        meliLinkContainer.classList.add(
+          "hidden"
+        );
+
+        linkLabel.textContent =
+          "Link de afiliado Amazon";
+
+      } else {
+
+        meliTab.classList.add(
+          "active"
+        );
+
+        amazonTab.classList.remove(
+          "active"
+        );
+
+        meliLinkContainer.classList.remove(
+          "hidden"
+        );
+
+        amazonLinkContainer.classList.add(
+          "hidden"
+        );
+
+        linkLabel.textContent =
+          "Link de afiliado Mercado Livre";
+
       }
-    );
-
-  }
-
-
-  function parseMoney(value) {
-
-    if (!value) {
-      return null;
-    }
-
-    let text =
-      String(value)
-        .trim()
-        .replace(/[R$\s]/g, "");
-
-    if (
-      text.includes(".") &&
-      text.includes(",")
-    ) {
-
-      text =
-        text
-          .replace(/\./g, "")
-          .replace(",", ".");
-
-    } else if (
-      text.includes(",")
-    ) {
-
-      text =
-        text.replace(",", ".");
 
     }
 
-    const number =
-      Number(text);
 
-    return Number.isFinite(number)
-      ? number
-      : null;
+    function setStatus(
+      text,
+      type
+    ) {
 
-  }
+      const status =
+        document.getElementById(
+          "lookupStatus"
+        );
+
+      status.textContent =
+        text;
+
+      status.className =
+        `status show ${type}`;
+
+    }
 
 
-  async function buscarMercadoLivre() {
+    function formatMoney(
+      value
+    ) {
 
-    const link =
-      document
-        .getElementById(
-          "meliLink"
+      if (
+        value === null ||
+        value === undefined ||
+        value === ""
+      ) {
+
+        return "";
+
+      }
+
+
+      const number =
+        Number(value);
+
+
+      if (
+        !Number.isFinite(
+          number
         )
-        .value
-        .trim();
+      ) {
+
+        return "";
+
+      }
 
 
-    if (!link) {
-
-      setStatus(
-        "Cole um link do Mercado Livre.",
-        "error"
+      return number.toLocaleString(
+        "pt-BR",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
       );
 
-      return;
+    }
+
+
+    function parseMoney(
+      value
+    ) {
+
+      if (!value) {
+
+        return null;
+
+      }
+
+
+      let text =
+        String(value)
+          .trim()
+          .replace(
+            /[R$\s]/g,
+            ""
+          );
+
+
+      if (
+        text.includes(".") &&
+        text.includes(",")
+      ) {
+
+        text =
+          text
+            .replace(
+              /\./g,
+              ""
+            )
+            .replace(
+              ",",
+              "."
+            );
+
+      } else if (
+        text.includes(",")
+      ) {
+
+        text =
+          text.replace(
+            ",",
+            "."
+          );
+
+      }
+
+
+      const number =
+        Number(text);
+
+
+      return Number.isFinite(
+        number
+      )
+        ? number
+        : null;
 
     }
 
 
-    lookupButton.disabled =
-      true;
+    function detectarCategoria(
+      title
+    ) {
 
-    lookupButton.textContent =
-      "Buscando...";
-
-
-    setStatus(
-      "Consultando produto...",
-      "success"
-    );
+      const text =
+        String(
+          title || ""
+        ).toLowerCase();
 
 
-    try {
+      const groups = [
+        {
+          category:
+            "Celulares",
 
-      const endpoint =
-        `/api/mercadolivre/product?url=${encodeURIComponent(link)}`;
+          words: [
+            "iphone",
+            "smartphone",
+            "celular",
+            "capinha",
+            "capa iphone",
+            "carregador celular",
+            "película",
+            "pelicula",
+            "magsafe",
+          ],
+        },
+
+        {
+          category:
+            "Informática",
+
+          words: [
+            "notebook",
+            "laptop",
+            "mouse",
+            "teclado",
+            "monitor",
+            "ssd",
+            "memória ram",
+            "memoria ram",
+            "placa de vídeo",
+            "placa de video",
+            "processador",
+            "roteador",
+            "impressora",
+            "headset gamer",
+          ],
+        },
+
+        {
+          category:
+            "Games",
+
+          words: [
+            "playstation",
+            "ps5",
+            "xbox",
+            "nintendo",
+            "controle",
+            "joystick",
+            "videogame",
+            "game",
+          ],
+        },
+
+        {
+          category:
+            "Casa e cozinha",
+
+          words: [
+            "air fryer",
+            "cafeteira",
+            "panela",
+            "liquidificador",
+            "microondas",
+            "micro-ondas",
+            "aspirador",
+            "ventilador",
+            "geladeira",
+            "cozinha",
+            "casa",
+            "churrasqueira",
+          ],
+        },
+
+        {
+          category:
+            "Ferramentas",
+
+          words: [
+            "furadeira",
+            "parafusadeira",
+            "serra",
+            "chave de impacto",
+            "compressor",
+            "ferramenta",
+            "esmerilhadeira",
+            "martelete",
+          ],
+        },
+
+        {
+          category:
+            "Beleza",
+
+          words: [
+            "perfume",
+            "shampoo",
+            "condicionador",
+            "creme",
+            "maquiagem",
+            "secador",
+            "chapinha",
+            "barbeador",
+            "hidratante",
+            "protetor solar",
+          ],
+        },
+
+        {
+          category:
+            "Eletrônicos",
+
+          words: [
+            "fone",
+            "bluetooth",
+            "echo dot",
+            "alexa",
+            "smart tv",
+            "televisão",
+            "televisao",
+            "caixa de som",
+            "speaker",
+            "smartwatch",
+            "fone de ouvido",
+          ],
+        },
+      ];
 
 
-      const response =
-        await fetch(
-          endpoint,
-          {
-            method: "GET",
-            cache: "no-store",
+      for (
+        const group of groups
+      ) {
+
+        for (
+          const word of group.words
+        ) {
+
+          if (
+            text.includes(
+              word
+            )
+          ) {
+
+            return group.category;
+
+          }
+
+        }
+
+      }
+
+
+      return "Outros";
+
+    }
+
+
+    function preencherCategoria(
+      title
+    ) {
+
+      const category =
+        detectarCategoria(
+          title
+        );
+
+
+      const select =
+        document.getElementById(
+          "category"
+        );
+
+
+      const exists =
+        Array.from(
+          select.options
+        ).some(
+          function (
+            option
+          ) {
+
+            return (
+              option.value ===
+              category
+            );
+
           }
         );
 
 
-      let data;
+      if (exists) {
 
-      try {
+        select.value =
+          category;
 
-        data =
-          await response.json();
+      } else {
 
-      } catch {
+        select.value =
+          "Outros";
 
-        throw new Error(
-          "Resposta inválida do servidor."
+      }
+
+    }
+
+
+    async function buscarMercadoLivre() {
+
+      const link =
+        document
+          .getElementById(
+            "meliLink"
+          )
+          .value
+          .trim();
+
+
+      if (!link) {
+
+        setStatus(
+          "Cole um link do Mercado Livre.",
+          "error"
         );
+
+        return;
 
       }
 
 
-      if (
-        !response.ok ||
-        !data.success
-      ) {
+      lookupButton.disabled =
+        true;
 
-        throw new Error(
-          data.error ||
-          "Não foi possível buscar o produto."
-        );
-
-      }
-
-
-      mercadoLivreData =
-        data.product;
-
-
-      document.getElementById(
-        "product"
-      ).value =
-        data.product.title || "";
-
-
-      document.getElementById(
-        "price"
-      ).value =
-        formatMoney(
-          data.product.price
-        );
-
-
-      document.getElementById(
-        "oldPrice"
-      ).value =
-        formatMoney(
-          data.product.original_price
-        );
-
-
-      if (
-        data.product.free_shipping
-      ) {
-
-        document.getElementById(
-          "note"
-        ).value =
-          "Frete grátis";
-
-      }
-
-
-      const preview =
-        document.getElementById(
-          "productPreview"
-        );
-
-
-      if (
-        data.product.image
-      ) {
-
-        document.getElementById(
-          "productImage"
-        ).src =
-          data.product.image;
-
-      }
-
-
-      document.getElementById(
-        "productPreviewTitle"
-      ).textContent =
-        data.product.title || "";
-
-
-      document.getElementById(
-        "productPreviewPrice"
-      ).textContent =
-        data.product.price
-          ? `R$ ${formatMoney(
-              data.product.price
-            )}`
-          : "";
-
-
-      document.getElementById(
-        "productPreviewDiscount"
-      ).textContent =
-        data.product
-          .discount_percent
-          ? `${data.product.discount_percent}% OFF`
-          : "";
-
-
-      preview.classList.add(
-        "show"
-      );
+      lookupButton.textContent =
+        "Buscando...";
 
 
       setStatus(
-        "✅ Produto encontrado e preenchido automaticamente.",
+        "Consultando produto...",
         "success"
       );
 
-    } catch (error) {
-
-      console.error(
-        "Erro Mercado Livre:",
-        error
-      );
-
-      setStatus(
-        error.message ||
-        "Erro ao buscar produto.",
-        "error"
-      );
-
-    } finally {
-
-      lookupButton.disabled =
-        false;
-
-      lookupButton.textContent =
-        "🔎 Buscar";
-
-    }
-
-  }
-
-
-  function generateOffer() {
-
-    const product =
-      document
-        .getElementById(
-          "product"
-        )
-        .value
-        .trim();
-
-
-    const price =
-      parseMoney(
-        document
-          .getElementById(
-            "price"
-          )
-          .value
-      );
-
-
-    const oldPrice =
-      parseMoney(
-        document
-          .getElementById(
-            "oldPrice"
-          )
-          .value
-      );
-
-
-    const coupon =
-      document
-        .getElementById(
-          "coupon"
-        )
-        .value
-        .trim();
-
-
-    const note =
-      document
-        .getElementById(
-          "note"
-        )
-        .value
-        .trim();
-
-
-    const link =
-      platform === "meli"
-        ? document
-            .getElementById(
-              "meliLink"
-            )
-            .value
-            .trim()
-        : document
-            .getElementById(
-              "amazonLink"
-            )
-            .value
-            .trim();
-
-
-    if (
-      !product ||
-      !price ||
-      !link
-    ) {
-
-      alert(
-        "Preencha produto, preço e link."
-      );
-
-      return;
-
-    }
-
-
-    let discount =
-      null;
-
-
-    if (
-      platform === "meli" &&
-      mercadoLivreData &&
-      mercadoLivreData.discount_percent
-    ) {
-
-      discount =
-        mercadoLivreData
-          .discount_percent;
-
-    } else if (
-      oldPrice &&
-      oldPrice > price
-    ) {
-
-      discount =
-        Math.round(
-          (
-            (oldPrice - price) /
-            oldPrice
-          ) * 100
-        );
-
-    }
-
-
-    let message =
-`🚨 *OFERTA TURBO* ⚡
-
-🔥 *${product}*`;
-
-
-    if (discount) {
-
-      message +=
-`\n\n💥 *${discount}% OFF*`;
-
-    }
-
-
-    if (oldPrice) {
-
-      message +=
-`\n\n❌ De: ~R$ ${formatMoney(oldPrice)}~`;
-
-    }
-
-
-    message +=
-`\n✅ *Por: R$ ${formatMoney(price)}*`;
-
-
-    if (coupon) {
-
-      message +=
-`\n\n🎟️ Cupom: *${coupon}*`;
-
-    }
-
-
-    if (note) {
-
-      message +=
-`\n\n🚚 ${note}`;
-
-    }
-
-
-    message +=
-`\n\n🛒 *Compre aqui:*
-${link}
-
-⚡ Oferta Turbo
-⏳ Preço pode mudar a qualquer momento.`;
-
-
-    document.getElementById(
-      "messagePreview"
-    ).textContent =
-      message;
-
-
-    copyButton.classList.remove(
-      "hidden"
-    );
-
-  }
-
-
-  async function copyMessage() {
-
-    const text =
-      document.getElementById(
-        "messagePreview"
-      ).textContent;
-
-
-    try {
-
-      await navigator.clipboard.writeText(
-        text
-      );
-
-
-      const oldText =
-        copyButton.textContent;
-
-
-      copyButton.textContent =
-        "✅ Copiado!";
-
-
-      setTimeout(
-        function () {
-
-          copyButton.textContent =
-            oldText;
-
-        },
-        1600
-      );
-
-    } catch {
-
-      /*
-       * Fallback para navegadores
-       * onde Clipboard API falha.
-       */
-
-      const textarea =
-        document.createElement(
-          "textarea"
-        );
-
-      textarea.value =
-        text;
-
-      textarea.style.position =
-        "fixed";
-
-      textarea.style.opacity =
-        "0";
-
-      document.body.appendChild(
-        textarea
-      );
-
-      textarea.select();
 
       try {
 
-        document.execCommand(
-          "copy"
+        const endpoint =
+          `/api/mercadolivre/product?url=${encodeURIComponent(link)}`;
+
+
+        const response =
+          await fetch(
+            endpoint,
+            {
+              method:
+                "GET",
+
+              cache:
+                "no-store",
+            }
+          );
+
+
+        let data;
+
+
+        try {
+
+          data =
+            await response.json();
+
+        } catch {
+
+          throw new Error(
+            "Resposta inválida do servidor."
+          );
+
+        }
+
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+
+          throw new Error(
+            data.error ||
+            "Não foi possível buscar o produto."
+          );
+
+        }
+
+
+        mercadoLivreData =
+          data.product;
+
+
+        document.getElementById(
+          "product"
+        ).value =
+          data.product.title ||
+          "";
+
+
+        document.getElementById(
+          "price"
+        ).value =
+          formatMoney(
+            data.product.price
+          );
+
+
+        document.getElementById(
+          "oldPrice"
+        ).value =
+          formatMoney(
+            data.product.original_price
+          );
+
+
+        preencherCategoria(
+          data.product.title
         );
+
+
+        if (
+          data.product.free_shipping
+        ) {
+
+          document.getElementById(
+            "note"
+          ).value =
+            "Frete grátis";
+
+        } else {
+
+          document.getElementById(
+            "note"
+          ).value =
+            "";
+
+        }
+
+
+        const preview =
+          document.getElementById(
+            "productPreview"
+          );
+
+
+        if (
+          data.product.image
+        ) {
+
+          document.getElementById(
+            "productImage"
+          ).src =
+            data.product.image;
+
+        }
+
+
+        document.getElementById(
+          "productPreviewTitle"
+        ).textContent =
+          data.product.title ||
+          "";
+
+
+        document.getElementById(
+          "productPreviewPrice"
+        ).textContent =
+          data.product.price
+            ? `R$ ${formatMoney(
+                data.product.price
+              )}`
+            : "";
+
+
+        document.getElementById(
+          "productPreviewDiscount"
+        ).textContent =
+          data.product
+            .discount_percent
+            ? `${data.product.discount_percent}% OFF`
+            : "";
+
+
+        preview.classList.add(
+          "show"
+        );
+
+
+        setStatus(
+          "✅ Produto encontrado e preenchido automaticamente.",
+          "success"
+        );
+
+
+        /*
+         * NOVO:
+         * depois da busca,
+         * já gera a postagem.
+         */
+        generateOffer();
+
+
+        /*
+         * Rola suavemente
+         * para a mensagem pronta.
+         */
+        setTimeout(
+          function () {
+
+            document.getElementById(
+              "messagePreview"
+            ).scrollIntoView(
+              {
+                behavior:
+                  "smooth",
+
+                block:
+                  "center",
+              }
+            );
+
+          },
+          250
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Erro Mercado Livre:",
+          error
+        );
+
+
+        setStatus(
+          error.message ||
+          "Erro ao buscar produto.",
+          "error"
+        );
+
+      } finally {
+
+        lookupButton.disabled =
+          false;
+
+        lookupButton.textContent =
+          "🔎 Buscar";
+
+      }
+
+    }
+
+
+    function generateOffer() {
+
+      const product =
+        document
+          .getElementById(
+            "product"
+          )
+          .value
+          .trim();
+
+
+      const price =
+        parseMoney(
+          document
+            .getElementById(
+              "price"
+            )
+            .value
+        );
+
+
+      const oldPrice =
+        parseMoney(
+          document
+            .getElementById(
+              "oldPrice"
+            )
+            .value
+        );
+
+
+      const category =
+        document
+          .getElementById(
+            "category"
+          )
+          .value;
+
+
+      const coupon =
+        document
+          .getElementById(
+            "coupon"
+          )
+          .value
+          .trim();
+
+
+      const note =
+        document
+          .getElementById(
+            "note"
+          )
+          .value
+          .trim();
+
+
+      const link =
+        platform === "meli"
+          ? document
+              .getElementById(
+                "meliLink"
+              )
+              .value
+              .trim()
+
+          : document
+              .getElementById(
+                "amazonLink"
+              )
+              .value
+              .trim();
+
+
+      if (
+        !product ||
+        !price ||
+        !link
+      ) {
+
+        return;
+
+      }
+
+
+      let discount =
+        null;
+
+
+      if (
+        platform === "meli" &&
+        mercadoLivreData &&
+        mercadoLivreData
+          .discount_percent
+      ) {
+
+        discount =
+          mercadoLivreData
+            .discount_percent;
+
+      } else if (
+        oldPrice &&
+        oldPrice > price
+      ) {
+
+        discount =
+          Math.round(
+            (
+              (
+                oldPrice -
+                price
+              ) /
+              oldPrice
+            ) *
+            100
+          );
+
+      }
+
+
+      let categoryEmoji =
+        "🔥";
+
+
+      if (
+        category ===
+        "Celulares"
+      ) {
+
+        categoryEmoji =
+          "📱";
+
+      } else if (
+        category ===
+        "Informática"
+      ) {
+
+        categoryEmoji =
+          "💻";
+
+      } else if (
+        category ===
+        "Games"
+      ) {
+
+        categoryEmoji =
+          "🎮";
+
+      } else if (
+        category ===
+        "Casa e cozinha"
+      ) {
+
+        categoryEmoji =
+          "🏠";
+
+      } else if (
+        category ===
+        "Ferramentas"
+      ) {
+
+        categoryEmoji =
+          "🛠️";
+
+      } else if (
+        category ===
+        "Beleza"
+      ) {
+
+        categoryEmoji =
+          "✨";
+
+      } else if (
+        category ===
+        "Eletrônicos"
+      ) {
+
+        categoryEmoji =
+          "⚡";
+
+      }
+
+
+      let message =
+`🚨 *OFERTA TURBO* ⚡
+
+${categoryEmoji} *${product}*`;
+
+
+      if (
+        discount
+      ) {
+
+        message +=
+`\n\n🔥 *${discount}% OFF*`;
+
+      }
+
+
+      if (
+        oldPrice
+      ) {
+
+        message +=
+`\n\n❌ De: ~R$ ${formatMoney(
+          oldPrice
+        )}~`;
+
+      }
+
+
+      message +=
+`\n✅ *Por apenas: R$ ${formatMoney(
+        price
+      )}*`;
+
+
+      if (
+        coupon
+      ) {
+
+        message +=
+`\n\n🎟️ Cupom: *${coupon}*`;
+
+      }
+
+
+      if (
+        note
+      ) {
+
+        if (
+          note
+            .toLowerCase()
+            .includes(
+              "frete"
+            )
+        ) {
+
+          message +=
+`\n\n🚚 *${note}*`;
+
+        } else {
+
+          message +=
+`\n\n📌 ${note}`;
+
+        }
+
+      }
+
+
+      message +=
+`\n\n🛒 *PEGUE A OFERTA AQUI:*
+${link}
+
+⚡ *Oferta Turbo*
+⏳ Preço e estoque podem mudar a qualquer momento.`;
+
+
+      document.getElementById(
+        "messagePreview"
+      ).textContent =
+        message;
+
+
+      copyButton.classList.remove(
+        "hidden"
+      );
+
+    }
+
+
+    async function copyMessage() {
+
+      const text =
+        document.getElementById(
+          "messagePreview"
+        ).textContent;
+
+
+      try {
+
+        await navigator
+          .clipboard
+          .writeText(
+            text
+          );
+
+
+        const oldText =
+          copyButton.textContent;
+
 
         copyButton.textContent =
           "✅ Copiado!";
+
 
         setTimeout(
           function () {
 
             copyButton.textContent =
-              "📋 Copiar mensagem";
+              oldText;
 
           },
           1600
@@ -1284,180 +1653,234 @@ ${link}
 
       } catch {
 
-        alert(
-          "Não foi possível copiar automaticamente."
+        const textarea =
+          document.createElement(
+            "textarea"
+          );
+
+
+        textarea.value =
+          text;
+
+        textarea.style.position =
+          "fixed";
+
+        textarea.style.opacity =
+          "0";
+
+
+        document.body.appendChild(
+          textarea
+        );
+
+
+        textarea.select();
+
+
+        try {
+
+          document.execCommand(
+            "copy"
+          );
+
+
+          copyButton.textContent =
+            "✅ Copiado!";
+
+
+          setTimeout(
+            function () {
+
+              copyButton.textContent =
+                "📋 Copiar mensagem";
+
+            },
+            1600
+          );
+
+        } catch {
+
+          alert(
+            "Não foi possível copiar automaticamente."
+          );
+
+        }
+
+
+        textarea.remove();
+
+      }
+
+    }
+
+
+    function clearForm() {
+
+      const ids = [
+        "amazonLink",
+        "meliLink",
+        "product",
+        "price",
+        "oldPrice",
+        "coupon",
+        "note",
+      ];
+
+
+      ids.forEach(
+        function (
+          id
+        ) {
+
+          document.getElementById(
+            id
+          ).value =
+            "";
+
+        }
+      );
+
+
+      document.getElementById(
+        "category"
+      ).value =
+        "Eletrônicos";
+
+
+      document.getElementById(
+        "messagePreview"
+      ).textContent =
+        "Preencha os dados e toque em “Gerar oferta”.";
+
+
+      copyButton.classList.add(
+        "hidden"
+      );
+
+
+      document.getElementById(
+        "productPreview"
+      ).classList.remove(
+        "show"
+      );
+
+
+      document.getElementById(
+        "productImage"
+      ).src =
+        "";
+
+
+      document.getElementById(
+        "lookupStatus"
+      ).className =
+        "status";
+
+
+      mercadoLivreData =
+        null;
+
+    }
+
+
+    amazonTab.addEventListener(
+      "click",
+      function () {
+
+        changePlatform(
+          "amazon"
         );
 
       }
-
-      textarea.remove();
-
-    }
-
-  }
+    );
 
 
-  function clearForm() {
+    meliTab.addEventListener(
+      "click",
+      function () {
 
-    const ids = [
-      "amazonLink",
-      "meliLink",
-      "product",
-      "price",
-      "oldPrice",
-      "coupon",
-      "note",
-    ];
-
-
-    ids.forEach(
-      function (id) {
-
-        document.getElementById(
-          id
-        ).value = "";
+        changePlatform(
+          "meli"
+        );
 
       }
     );
 
 
-    document.getElementById(
-      "messagePreview"
-    ).textContent =
-      "Preencha os dados e toque em “Gerar oferta”.";
-
-
-    copyButton.classList.add(
-      "hidden"
-    );
-
-
-    document.getElementById(
-      "productPreview"
-    ).classList.remove(
-      "show"
-    );
-
-
-    document.getElementById(
-      "productImage"
-    ).src = "";
-
-
-    document.getElementById(
-      "lookupStatus"
-    ).className =
-      "status";
-
-
-    mercadoLivreData =
-      null;
-
-  }
-
-
-  amazonTab.addEventListener(
-    "click",
-    function () {
-
-      changePlatform(
-        "amazon"
-      );
-
-    }
-  );
-
-
-  meliTab.addEventListener(
-    "click",
-    function () {
-
-      changePlatform(
-        "meli"
-      );
-
-    }
-  );
-
-
-  lookupButton.addEventListener(
-    "click",
-    function () {
-
-      buscarMercadoLivre();
-
-    }
-  );
-
-
-  generateButton.addEventListener(
-    "click",
-    function () {
-
-      generateOffer();
-
-    }
-  );
-
-
-  clearButton.addEventListener(
-    "click",
-    function () {
-
-      clearForm();
-
-    }
-  );
-
-
-  copyButton.addEventListener(
-    "click",
-    function () {
-
-      copyMessage();
-
-    }
-  );
-
-
-  /*
-   * Facilita no celular:
-   * colou o link e apertou Enter,
-   * já faz a busca.
-   */
-  document.getElementById(
-    "meliLink"
-  ).addEventListener(
-    "keydown",
-    function (event) {
-
-      if (
-        event.key === "Enter"
-      ) {
-
-        event.preventDefault();
+    lookupButton.addEventListener(
+      "click",
+      function () {
 
         buscarMercadoLivre();
 
       }
-
-    }
-  );
+    );
 
 
-  /*
-   * Estado inicial.
-   */
-  changePlatform(
-    "amazon"
-  );
+    generateButton.addEventListener(
+      "click",
+      function () {
+
+        generateOffer();
+
+      }
+    );
 
 
-  console.log(
-    "Oferta Turbo carregado com sucesso."
-  );
+    clearButton.addEventListener(
+      "click",
+      function () {
 
-});
+        clearForm();
+
+      }
+    );
+
+
+    copyButton.addEventListener(
+      "click",
+      function () {
+
+        copyMessage();
+
+      }
+    );
+
+
+    document.getElementById(
+      "meliLink"
+    ).addEventListener(
+      "keydown",
+      function (
+        event
+      ) {
+
+        if (
+          event.key ===
+          "Enter"
+        ) {
+
+          event.preventDefault();
+
+          buscarMercadoLivre();
+
+        }
+
+      }
+    );
+
+
+    changePlatform(
+      "amazon"
+    );
+
+
+    console.log(
+      "Oferta Turbo carregado com sucesso."
+    );
+
+  }
+);
 </script>
 
 </body>
