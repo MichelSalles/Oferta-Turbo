@@ -27,7 +27,9 @@ function getCookie(req, name) {
 
   if (!cookie) return null;
 
-  return decodeURIComponent(cookie.substring(name.length + 1));
+  return decodeURIComponent(
+    cookie.substring(name.length + 1)
+  );
 }
 
 async function resolveShortUrl(url) {
@@ -38,6 +40,7 @@ async function resolveShortUrl(url) {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
@@ -51,12 +54,16 @@ async function resolveShortUrl(url) {
 
     return response.url || url;
   } catch (error) {
-    console.error("Erro ao resolver link curto:", error);
+    console.error(
+      "Erro ao resolver link curto:",
+      error
+    );
+
     return url;
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", ["GET"]);
 
@@ -74,49 +81,104 @@ export default async function handler(req, res) {
       });
     }
 
-    let itemId = id ? extractItemId(id) : null;
+    let itemId = id
+      ? extractItemId(id)
+      : null;
+
     let finalUrl = url || "";
 
+    // Tenta encontrar MLB diretamente no link recebido
     if (!itemId && url) {
       itemId = extractItemId(url);
     }
 
-    if (!itemId && url?.includes("meli.la")) {
+    // Se for link curto meli.la, tenta descobrir
+    // para qual página ele redireciona
+    if (
+      !itemId &&
+      url &&
+      url.includes("meli.la")
+    ) {
       finalUrl = await resolveShortUrl(url);
+
+      console.log(
+        "Link Mercado Livre resolvido:",
+        {
+          original: url,
+          final: finalUrl,
+        }
+      );
+
       itemId = extractItemId(finalUrl);
     }
 
     if (!itemId) {
       return res.status(400).json({
-        error: "Não foi possível identificar o ID do produto.",
+        error:
+          "Não foi possível identificar o ID do produto.",
+
+        original_url: url || null,
         final_url: finalUrl || null,
       });
     }
 
-    const accessToken = getCookie(req, "meli_access_token");
+    console.log(
+      "Produto identificado:",
+      itemId
+    );
+
+    const accessToken = getCookie(
+      req,
+      "meli_access_token"
+    );
 
     const headers = {
       Accept: "application/json",
     };
 
     if (accessToken) {
-      headers.Authorization = `Bearer ${accessToken}`;
+      headers.Authorization =
+        `Bearer ${accessToken}`;
     }
 
     const response = await fetch(
       `https://api.mercadolibre.com/items/${itemId}`,
       {
+        method: "GET",
         headers,
       }
     );
 
-    const data = await response.json();
+    let data;
+
+    try {
+      data = await response.json();
+    } catch (error) {
+      console.error(
+        "Resposta inválida Mercado Livre:",
+        error
+      );
+
+      return res.status(502).json({
+        error:
+          "O Mercado Livre retornou uma resposta inválida.",
+      });
+    }
 
     if (!response.ok) {
-      return res.status(response.status).json({
-        error: "Erro ao consultar produto no Mercado Livre.",
-        details: data,
-      });
+      console.error(
+        "Erro API Mercado Livre:",
+        data
+      );
+
+      return res
+        .status(response.status)
+        .json({
+          error:
+            "Erro ao consultar produto no Mercado Livre.",
+
+          details: data,
+        });
     }
 
     const originalPrice =
@@ -128,44 +190,94 @@ export default async function handler(req, res) {
     const discountPercent =
       originalPrice && data.price
         ? Math.round(
-            ((originalPrice - data.price) / originalPrice) * 100
+            ((originalPrice - data.price) /
+              originalPrice) *
+              100
           )
         : null;
+
+    const pictures = Array.isArray(
+      data.pictures
+    )
+      ? data.pictures
+          .map(
+            (picture) =>
+              picture.secure_url ||
+              picture.url
+          )
+          .filter(Boolean)
+      : [];
 
     return res.status(200).json({
       success: true,
 
       product: {
         id: data.id,
+
         title: data.title,
 
         price: data.price,
-        original_price: originalPrice,
-        discount_percent: discountPercent,
 
-        currency: data.currency_id,
+        original_price:
+          originalPrice,
 
-        permalink: data.permalink,
-        final_url: finalUrl || data.permalink,
+        discount_percent:
+          discountPercent,
 
-        thumbnail: data.thumbnail,
-        pictures:
-          data.pictures?.map((picture) => picture.secure_url) || [],
+        currency:
+          data.currency_id,
 
-        condition: data.condition,
+        permalink:
+          data.permalink,
 
-        available_quantity: data.available_quantity,
-        sold_quantity: data.sold_quantity,
+        original_url:
+          url || null,
+
+        final_url:
+          finalUrl ||
+          data.permalink,
+
+        thumbnail:
+          data.thumbnail,
+
+        pictures,
+
+        condition:
+          data.condition,
+
+        available_quantity:
+          data.available_quantity,
+
+        sold_quantity:
+          data.sold_quantity,
 
         free_shipping:
-          data.shipping?.free_shipping === true,
+          data.shipping?.free_shipping ===
+          true,
 
-        category_id: data.category_id,
-        seller_id: data.seller_id,
+        category_id:
+          data.category_id,
+
+        seller_id:
+          data.seller_id,
+
+        listing_type_id:
+          data.listing_type_id,
       },
     });
   } catch (error) {
-    console.error("Erro product.js:", error);
+    console.error(
+      "Erro product.js:",
+      error
+    );
 
     return res.status(500).json({
-      error
+      error:
+        "Erro interno ao consultar produto.",
+
+      message:
+        error?.message ||
+        "Erro desconhecido.",
+    });
+  }
+};
