@@ -4,6 +4,7 @@ const REDIRECT_URI =
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", ["GET"]);
+
     return res.status(405).json({
       error: "Method not allowed",
     });
@@ -48,6 +49,8 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
+      console.error("Erro OAuth Mercado Livre:", data);
+
       return res.status(response.status).json({
         connected: false,
         error: data?.error || "oauth_error",
@@ -57,23 +60,46 @@ export default async function handler(req, res) {
       });
     }
 
+    const accessToken = data.access_token;
+    const refreshToken = data.refresh_token;
+    const expiresIn = data.expires_in || 21600;
+
+    res.setHeader("Set-Cookie", [
+      [
+        `meli_access_token=${encodeURIComponent(accessToken)}`,
+        "HttpOnly",
+        "Secure",
+        "SameSite=Lax",
+        "Path=/",
+        `Max-Age=${expiresIn}`,
+      ].join("; "),
+
+      [
+        `meli_refresh_token=${encodeURIComponent(refreshToken)}`,
+        "HttpOnly",
+        "Secure",
+        "SameSite=Lax",
+        "Path=/",
+        "Max-Age=15552000",
+      ].join("; "),
+    ]);
+
     console.log("Mercado Livre conectado.", {
       user_id: data.user_id,
-      expires_in: data.expires_in,
+      expires_in: expiresIn,
     });
 
-    return res.status(200).json({
-      connected: true,
-      user_id: data.user_id,
-      expires_in: data.expires_in,
-      message: "Mercado Livre conectado ao Oferta Turbo.",
-    });
+    return res.redirect(
+      302,
+      "/?mercadolivre=connected"
+    );
   } catch (err) {
-    console.error(err);
+    console.error("Erro interno OAuth Mercado Livre:", err);
 
     return res.status(500).json({
       connected: false,
       error: "internal_error",
+      message: "Erro interno ao conectar o Mercado Livre.",
     });
   }
 }
