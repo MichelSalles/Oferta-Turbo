@@ -4,13 +4,21 @@ function extractItemId(text = "") {
     /\/p\/MLB(\d{6,})/i,
     /\/MLB-(\d{6,})/i,
     /item_id=MLB(\d{6,})/i,
+    /"item_id"\s*:\s*"?(MLB\d{6,})"?/i,
+    /"id"\s*:\s*"?(MLB\d{6,})"?/i,
   ];
 
   for (const pattern of patterns) {
     const match = text.match(pattern);
 
     if (match) {
-      return `MLB${match[1]}`;
+      const value = match[1];
+
+      if (/^MLB/i.test(value)) {
+        return value.toUpperCase();
+      }
+
+      return `MLB${value}`;
     }
   }
 
@@ -32,35 +40,101 @@ function getCookie(req, name) {
   );
 }
 
-async function resolveShortUrl(url) {
-  try {
-    const response = await fetch(url, {
+async function resolveMercadoLivreUrl(startUrl) {
+  let currentUrl = startUrl;
+
+  const headers = {
+    "User-Agent":
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+    Accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  };
+
+  for (let i = 0; i < 8; i++) {
+    console.log(`Redirect ${i}:`, currentUrl);
+
+    const directId = extractItemId(currentUrl);
+
+    if (directId) {
+      return {
+        finalUrl: currentUrl,
+        itemId: directId,
+      };
+    }
+
+    const response = await fetch(currentUrl, {
       method: "GET",
       redirect: "manual",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
-
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
+      headers,
     });
 
     const location = response.headers.get("location");
 
     if (location) {
-      return new URL(location, url).toString();
+      currentUrl = new URL(
+        location,
+        currentUrl
+      ).toString();
+
+      continue;
     }
 
-    return response.url || url;
-  } catch (error) {
-    console.error(
-      "Erro ao resolver link curto:",
-      error
-    );
+    const contentType =
+      response.headers.get("content-type") || "";
 
-    return url;
+    if (contentType.includes("text/html")) {
+      const html = await response.text();
+
+      const idFromHtml = extractItemId(html);
+
+      if (idFromHtml) {
+        return {
+          finalUrl: currentUrl,
+          itemId: idFromHtml,
+        };
+      }
+
+      const canonical =
+        html.match(
+          /<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i
+        ) ||
+        html.match(
+          /<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)/i
+        );
+
+      if (canonical?.[1]) {
+        const nextUrl = new URL(
+          canonical[1],
+          currentUrl
+        ).toString();
+
+        if (nextUrl !== currentUrl) {
+          currentUrl = nextUrl;
+          continue;
+        }
+      }
+
+      const httpEquiv = html.match(
+        /url=([^"'<> ]+)/i
+      );
+
+      if (httpEquiv?.[1]) {
+        currentUrl = new URL(
+          httpEquiv[1],
+          currentUrl
+        ).toString();
+
+        continue;
+      }
+    }
+
+    break;
   }
+
+  return {
+    finalUrl: currentUrl,
+    itemId: extractItemId(currentUrl),
+  };
 }
 
 module.exports = async function handler(req, res) {
@@ -87,45 +161,28 @@ module.exports = async function handler(req, res) {
 
     let finalUrl = url || "";
 
-    // Tenta encontrar MLB diretamente no link recebido
     if (!itemId && url) {
       itemId = extractItemId(url);
     }
 
-    // Se for link curto meli.la, tenta descobrir
-    // para qual página ele redireciona
-    if (
-      !itemId &&
-      url &&
-      url.includes("meli.la")
-    ) {
-      finalUrl = await resolveShortUrl(url);
+    if (!itemId && url) {
+      const resolved =
+        await resolveMercadoLivreUrl(url);
 
-      console.log(
-        "Link Mercado Livre resolvido:",
-        {
-          original: url,
-          final: finalUrl,
-        }
-      );
-
-      itemId = extractItemId(finalUrl);
+      finalUrl = resolved.finalUrl;
+      itemId = resolved.itemId;
     }
 
     if (!itemId) {
       return res.status(400).json({
         error:
           "Não foi possível identificar o ID do produto.",
-
         original_url: url || null,
         final_url: finalUrl || null,
       });
     }
 
-    console.log(
-      "Produto identificado:",
-      itemId
-    );
+    console.log("Produto identificado:", itemId);
 
     const accessToken = getCookie(
       req,
@@ -149,34 +206,14 @@ module.exports = async function handler(req, res) {
       }
     );
 
-    let data;
-
-    try {
-      data = await response.json();
-    } catch (error) {
-      console.error(
-        "Resposta inválida Mercado Livre:",
-        error
-      );
-
-      return res.status(502).json({
-        error:
-          "O Mercado Livre retornou uma resposta inválida.",
-      });
-    }
+    const data = await response.json();
 
     if (!response.ok) {
-      console.error(
-        "Erro API Mercado Livre:",
-        data
-      );
-
       return res
         .status(response.status)
         .json({
           error:
             "Erro ao consultar produto no Mercado Livre.",
-
           details: data,
         });
     }
@@ -213,54 +250,31 @@ module.exports = async function handler(req, res) {
 
       product: {
         id: data.id,
-
         title: data.title,
-
         price: data.price,
+        original_price: originalPrice,
+        discount_percent: discountPercent,
+        currency: data.currency_id,
 
-        original_price:
-          originalPrice,
-
-        discount_percent:
-          discountPercent,
-
-        currency:
-          data.currency_id,
-
-        permalink:
-          data.permalink,
-
-        original_url:
-          url || null,
-
+        permalink: data.permalink,
+        original_url: url || null,
         final_url:
-          finalUrl ||
-          data.permalink,
+          finalUrl || data.permalink,
 
-        thumbnail:
-          data.thumbnail,
-
+        thumbnail: data.thumbnail,
         pictures,
 
-        condition:
-          data.condition,
-
+        condition: data.condition,
         available_quantity:
           data.available_quantity,
-
         sold_quantity:
           data.sold_quantity,
 
         free_shipping:
-          data.shipping?.free_shipping ===
-          true,
+          data.shipping?.free_shipping === true,
 
-        category_id:
-          data.category_id,
-
-        seller_id:
-          data.seller_id,
-
+        category_id: data.category_id,
+        seller_id: data.seller_id,
         listing_type_id:
           data.listing_type_id,
       },
@@ -274,7 +288,6 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({
       error:
         "Erro interno ao consultar produto.",
-
       message:
         error?.message ||
         "Erro desconhecido.",
