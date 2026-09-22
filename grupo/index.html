@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171717">
+  <meta name="description" content="Entre no grupo gratuito Oferta Turbo e acompanhe ofertas selecionadas do Mercado Livre.">
+  <title>Oferta Turbo | Grupo de ofertas</title>
+  <link rel="preload" href="/grupo/ofertas-hero.jpg" as="image">
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #171717;
+      background: #fff;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; }
+    a { color: inherit; }
+
+    .topbar {
+      min-height: 66px;
+      padding: 0 max(20px, calc((100vw - 1180px) / 2));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: #171717;
+      color: #fff;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      font-size: 21px;
+      line-height: 1;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      background: #ffe600;
+      color: #171717;
+      border-radius: 4px;
+      font-size: 21px;
+      font-weight: 900;
+    }
+
+    .topbar-note {
+      color: #d6d6d6;
+      font-size: 13px;
+    }
+
+    .hero {
+      position: relative;
+      min-height: clamp(540px, 64vh, 670px);
+      display: flex;
+      align-items: center;
+      background-color: #ffdf24;
+      background-image: url("/grupo/ofertas-hero.jpg");
+      background-size: cover;
+      background-position: center;
+      overflow: hidden;
+    }
+
+    .hero-inner {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 36px 0 48px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-copy { max-width: 490px; }
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 18px;
+      padding: 8px 10px;
+      border-radius: 3px;
+      background: #171717;
+      color: #ffe600;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 18px;
+      font-size: clamp(48px, 5.6vw, 82px);
+      line-height: .98;
+      font-weight: 900;
+    }
+
+    .lead {
+      max-width: 415px;
+      margin: 0 0 28px;
+      font-size: clamp(18px, 1.7vw, 23px);
+      line-height: 1.35;
+      font-weight: 600;
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 58px;
+      padding: 15px 26px;
+      border-radius: 5px;
+      background: #15803d;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 800;
+      text-align: center;
+      text-decoration: none;
+      box-shadow: 0 4px 0 #0d5728;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    .cta:hover, .cta:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 #0d5728;
+    }
+
+    .assurance {
+      margin: 18px 0 0;
+      font-size: 14px;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 42px 20px 58px;
+      background: #fff;
+    }
+
+    .content-inner {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    h2 {
+      margin: 0 0 22px;
+      font-size: 25px;
+      line-height: 1.18;
+    }
+
+    .benefits {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 25px;
+    }
+
+    .benefit {
+      padding-top: 15px;
+      border-top: 3px solid #171717;
+    }
+
+    .benefit strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 17px;
+    }
+
+    .benefit p {
+      margin: 0;
+      color: #484848;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    footer {
+      padding: 20px;
+      background: #f1f1f1;
+      color: #505050;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    footer p { width: min(1180px, 100%); margin: 0 auto; }
+
+    @media (max-width: 760px) {
+      .topbar { min-height: 60px; }
+      .topbar-note { display: none; }
+      .hero {
+        min-height: min(710px, 82svh);
+        align-items: flex-start;
+        background-size: auto 40%;
+        background-position: 68% bottom;
+        background-repeat: no-repeat;
+      }
+      .hero-inner { padding-top: 32px; }
+      .hero-copy { max-width: 100%; }
+      h1 { font-size: 52px; }
+      .lead { max-width: 360px; font-size: 18px; }
+      .benefits { grid-template-columns: 1fr; gap: 22px; }
+      .content { padding-top: 36px; }
+    }
+
+    @media (max-width: 390px) {
+      .hero { min-height: 690px; background-size: auto 36%; }
+      h1 { font-size: 47px; }
+      .cta { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+      <span class="brand" aria-label="Oferta Turbo">
+        <span class="brand-mark" aria-hidden="true">!</span>
+        <span>OFERTA TURBO</span>
+      </span>
+    <span class="topbar-note">O grupo de ofertas para quem gosta de comprar bem</span>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <span class="eyebrow">Grupo gratuito no WhatsApp</span>
+          <h1 id="title">Oferta Turbo</h1>
+          <p class="lead">Ofertas selecionadas do Mercado Livre para você encontrar bons achados sem passar horas procurando.</p>
+          <a class="cta" href="https://chat.whatsapp.com/DICFUDK2NUi5RHPpkeX8e4">Entrar no grupo</a>
+          <p class="assurance">Entrada voluntária. Você pode sair quando quiser.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="content" aria-labelledby="benefits-title">
+      <div class="content-inner">
+        <h2 id="benefits-title">O que você encontra por lá</h2>
+        <div class="benefits">
+          <div class="benefit">
+            <strong>Achados do dia</strong>
+            <p>Uma seleção de produtos e promoções para conferir no seu tempo.</p>
+          </div>
+          <div class="benefit">
+            <strong>Link direto para a oferta</strong>
+            <p>Veja os detalhes e confirme o preço na loja antes de comprar.</p>
+          </div>
+          <div class="benefit">
+            <strong>Sem custo para entrar</strong>
+            <p>O grupo é gratuito e a decisão de compra é sempre sua.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>O Oferta Turbo pode receber comissão por compras realizadas pelos links divulgados, sem custo adicional para você. Preços, descontos e disponibilidade são definidos pelas lojas e podem mudar. Não somos um canal oficial do Mercado Livre.</p>
+  </footer>
+
+</body>
+</html>
